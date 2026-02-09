@@ -33,10 +33,18 @@ jobs:
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO
 
-    - name: Create DMG
+    - name: Create ZIP archive
       if: startsWith(github.ref, 'refs/tags/')
       run: |
-        brew install create-dmg
+        cd ./build/Build/Products/Release
+        zip -r -y ../../../../JiraViewer-${{ github.ref_name }}.zip JiraViewer.app
+        cd ../../../../
+        ls -lh JiraViewer-*.zip
+
+    - name: Create DMG (optional)
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        brew install create-dmg || true
 
         # Créer le DMG
         create-dmg \
@@ -47,7 +55,7 @@ jobs:
           --app-drop-link 425 120 \
           --no-internet-enable \
           "JiraViewer-${{ github.ref_name }}.dmg" \
-          "./build/Build/Products/Release/JiraViewer.app" || true
+          "./build/Build/Products/Release/JiraViewer.app" || echo "DMG creation skipped"
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -61,20 +69,43 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
+          JiraViewer-${{ github.ref_name }}.zip
           JiraViewer-${{ github.ref_name }}.dmg
         body: |
-          ## Installation
+          ## 📦 Fichiers disponibles
 
+          - **JiraViewer-${{ github.ref_name }}.zip** (Recommandé) - Archive ZIP avec l'application
+          - **JiraViewer-${{ github.ref_name }}.dmg** - Image disque DMG
+
+          ## 🚀 Installation
+
+          ### Option 1: Avec le ZIP (Recommandé)
+          1. Téléchargez le fichier `.zip`
+          2. Double-cliquez pour décompresser
+          3. Glissez `JiraViewer.app` dans votre dossier Applications
+          4. Lancez l'application
+
+          ### Option 2: Avec le DMG
           1. Téléchargez le fichier `.dmg`
           2. Ouvrez-le et glissez JiraViewer dans Applications
           3. Lancez l'application
-          4. Allez dans Settings (Cmd+,) pour configurer vos credentials Jira et Claude
 
-          ## Configuration requise
+          **⚠️ Note de sécurité**: Au premier lancement, macOS peut afficher un avertissement car l'app n'est pas signée. Allez dans **Préférences Système > Confidentialité et sécurité** et cliquez sur **"Ouvrir quand même"**.
+
+          ## ⚙️ Configuration
+
+          1. Ouvrez l'application
+          2. Allez dans **Settings** (Cmd+,)
+          3. Remplissez vos credentials Jira et Claude API key
+          4. C'est parti! 🎉
+
+          📖 Guide complet: [INSTALLATION_RAPIDE.md](https://github.com/Gioovannii/Jira-viewer/blob/main/INSTALLATION_RAPIDE.md)
+
+          ## 💻 Configuration requise
 
           - macOS 13.0 (Ventura) ou supérieur
 
-          ## Changelog
+          ## 📝 Changelog
 
           Voir les commits pour les changements détaillés.
       env:
