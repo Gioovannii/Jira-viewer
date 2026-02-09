@@ -25,15 +25,16 @@ Une application SwiftUI moderne qui se connecte à votre instance Jira pour:
 
 ## 🚀 Installation rapide
 
-### Pour les utilisateurs
+### Pour les utilisateurs (PO, EM, etc.)
 
-**Téléchargez la dernière version:**
+**📥 [Télécharger Jira Viewer](https://github.com/Gioovannii/Jira-viewer/releases/latest)**
 
-1. Allez sur [Releases](https://github.com/Gioovannii/Jira-viewer/releases)
-2. Téléchargez le fichier `.dmg` de la dernière version
-3. Ouvrez le `.dmg` et glissez JiraViewer dans Applications
-4. Lancez l'application
-5. Allez dans Settings (Cmd+,) pour configurer vos credentials
+Voir le guide d'installation en 3 étapes: [INSTALLATION_RAPIDE.md](INSTALLATION_RAPIDE.md)
+
+**En bref:**
+1. Téléchargez le `.dmg`
+2. Glissez dans Applications
+3. Configurez vos credentials Jira dans Settings
 
 ### Pour les développeurs
 
