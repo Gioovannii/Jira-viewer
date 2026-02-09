@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Jira Issue
-struct JiraIssue: Identifiable, Codable {
+struct JiraIssue: Identifiable, Codable, Hashable {
     let id: String
     let key: String
     let fields: IssueFields
@@ -17,7 +17,7 @@ struct JiraIssue: Identifiable, Codable {
     }
 }
 
-struct IssueFields: Codable {
+struct IssueFields: Codable, Hashable {
     let summary: String
     let description: String?
     let status: IssueStatus
@@ -33,26 +33,26 @@ struct IssueFields: Codable {
     }
 }
 
-struct IssueStatus: Codable {
+struct IssueStatus: Codable, Hashable {
     let name: String
 }
 
-struct JiraUser: Codable {
+struct JiraUser: Codable, Hashable {
     let displayName: String
     let emailAddress: String?
 }
 
-struct IssuePriority: Codable {
+struct IssuePriority: Codable, Hashable {
     let name: String
 }
 
-struct IssueType: Codable {
+struct IssueType: Codable, Hashable {
     let name: String
     let iconUrl: String?
 }
 
 // MARK: - Sprint
-struct Sprint: Codable, Identifiable {
+struct Sprint: Codable, Identifiable, Hashable {
     let id: Int
     let name: String
     let state: String
@@ -72,7 +72,7 @@ struct JiraSprintResponse: Codable {
 }
 
 // MARK: - AI Summary
-struct IssueSummary: Identifiable {
+struct IssueSummary: Identifiable, Hashable {
     let id: String
     let issueKey: String
     let summary: String

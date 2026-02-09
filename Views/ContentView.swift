@@ -55,7 +55,7 @@ struct SprintListView: View {
                 .disabled(jiraManager.isLoading)
             }
         }
-        .onChange(of: selectedSprint) { oldValue, newValue in
+        .onChange(of: selectedSprint) { newValue in
             Task {
                 await jiraManager.fetchIssues(for: newValue)
             }

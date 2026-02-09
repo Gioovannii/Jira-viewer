@@ -9,7 +9,7 @@ class JiraManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var summaries: [String: IssueSummary] = [:]
 
-    private var jiraBaseURL: String {
+    var jiraBaseURL: String {
         UserDefaults.standard.string(forKey: "jiraBaseURL") ?? "https://jira.ets.mpi-internal.com"
     }
 
