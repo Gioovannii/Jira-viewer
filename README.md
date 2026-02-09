@@ -25,6 +25,18 @@ Une application SwiftUI moderne qui se connecte à votre instance Jira pour:
 
 ## 🚀 Installation rapide
 
+### Pour les utilisateurs
+
+**Téléchargez la dernière version:**
+
+1. Allez sur [Releases](https://github.com/Gioovannii/Jira-viewer/releases)
+2. Téléchargez le fichier `.dmg` de la dernière version
+3. Ouvrez le `.dmg` et glissez JiraViewer dans Applications
+4. Lancez l'application
+5. Allez dans Settings (Cmd+,) pour configurer vos credentials
+
+### Pour les développeurs
+
 ```bash
 # Cloner le repository
 git clone https://github.com/Gioovannii/Jira-viewer.git
@@ -32,11 +44,12 @@ cd Jira-viewer
 
 # Ouvrir dans Xcode
 open JiraViewer.xcodeproj
+
+# Build et Run
+# Appuyez sur Cmd+R dans Xcode
 ```
 
-Puis appuyez sur `Cmd+R` pour lancer l'application.
-
-Voir [SETUP.md](SETUP.md) pour des instructions détaillées.
+Voir [SETUP.md](SETUP.md) pour des instructions détaillées de développement.
 
 ## ⚙️ Configuration
 
@@ -47,28 +60,22 @@ Voir [SETUP.md](SETUP.md) pour des instructions détaillées.
 - Accès à votre instance Jira
 - Clé API Claude (optionnel, pour les résumés IA)
 
-### 🛠 Compilation
+### 🛠 Compilation (Développeurs)
 
-1. Ouvrez le projet dans Xcode:
+Le projet Xcode est déjà configuré et prêt à l'emploi.
+
 ```bash
-cd JiraViewer
-open -a Xcode .
+# Ouvrir le projet
+open JiraViewer.xcodeproj
+
+# Ou compiler en ligne de commande
+xcodebuild -project JiraViewer.xcodeproj \
+  -scheme JiraViewer \
+  -configuration Release \
+  build
 ```
 
-2. Dans Xcode, créez un nouveau projet:
-   - File > New > Project
-   - Choisissez "macOS" > "App"
-   - Nom: JiraViewer
-   - Interface: SwiftUI
-   - Langage: Swift
-   - Ajoutez tous les fichiers .swift créés au projet
-
-3. Configurez le Bundle Identifier:
-   - Cliquez sur le projet dans la sidebar
-   - Allez dans "Signing & Capabilities"
-   - Définissez un Bundle Identifier unique (ex: com.votreentreprise.JiraViewer)
-
-4. Build et Run (Cmd+R)
+L'application sera dans `build/Build/Products/Release/JiraViewer.app`
 
 ### 🔑 Configuration de l'application
 
