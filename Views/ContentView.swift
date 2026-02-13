@@ -3,27 +3,85 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var jiraManager: JiraManager
     @State private var selectedIssue: JiraIssue?
+    @State private var showingWelcome = true
 
     var body: some View {
-        NavigationSplitView {
-            // Sidebar - Sprint List
-            SprintListView(selectedSprint: $jiraManager.selectedSprint)
-        } content: {
-            // Middle - Issue List
-            IssueListView(selectedIssue: $selectedIssue)
-        } detail: {
-            // Detail - Issue Detail
-            if let issue = selectedIssue {
-                IssueDetailView(issue: issue)
+        Group {
+            if !jiraManager.isConfigured && showingWelcome {
+                VStack(spacing: 20) {
+                    Image(systemName: "gearshape.2")
+                        .font(.system(size: 60))
+                        .foregroundColor(.secondary)
+
+                    Text("Configuration requise")
+                        .font(.title)
+                        .fontWeight(.semibold)
+
+                    Text("Veuillez configurer vos identifiants Jira dans les préférences")
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+
+                    if #available(macOS 14.0, *) {
+                        SettingsLink {
+                            Label("Ouvrir les Préférences", systemImage: "gear")
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut(",", modifiers: .command)
+                    } else {
+                        Button(action: {
+                            if let url = URL(string: "x-apple.systempreferences:") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }) {
+                            Label("Ouvrir les Préférences", systemImage: "gear")
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut(",", modifiers: .command)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                Text("Sélectionnez un ticket")
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                NavigationSplitView {
+                    // Sidebar - Sprint List
+                    SprintListView(selectedSprint: $jiraManager.selectedSprint)
+                } content: {
+                    // Middle - Issue List
+                    IssueListView(selectedIssue: $selectedIssue)
+                } detail: {
+                    // Detail - Issue Detail
+                    if let issue = selectedIssue {
+                        IssueDetailView(issue: issue)
+                    } else {
+                        Text("Sélectionnez un ticket")
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+                .navigationSplitViewStyle(.balanced)
+                .task {
+                    await jiraManager.fetchSprints()
+                }
             }
         }
-        .navigationSplitViewStyle(.balanced)
-        .task {
-            await jiraManager.fetchSprints()
+        .alert(
+            "Erreur",
+            isPresented: Binding(
+                get: { jiraManager.errorMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        jiraManager.errorMessage = nil
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(jiraManager.errorMessage ?? "Erreur inconnue")
         }
     }
 }

@@ -9,8 +9,10 @@ class JiraManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var summaries: [String: IssueSummary] = [:]
 
+    var oauthManager: OAuthManager?
+
     var jiraBaseURL: String {
-        UserDefaults.standard.string(forKey: "jiraBaseURL") ?? "https://jira.ets.mpi-internal.com"
+        UserDefaults.standard.string(forKey: "jiraBaseURL") ?? ""
     }
 
     private var jiraUsername: String {
@@ -26,10 +28,106 @@ class JiraManager: ObservableObject {
     }
 
     private var projectKey: String {
-        UserDefaults.standard.string(forKey: "projectKey") ?? "LBCMONSPE"
+        UserDefaults.standard.string(forKey: "projectKey") ?? ""
+    }
+
+    private var authMethod: AuthMethod {
+        get {
+            if let rawValue = UserDefaults.standard.string(forKey: "authMethod"),
+               let method = AuthMethod(rawValue: rawValue) {
+                return method
+            }
+            return .basicAuth
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "authMethod")
+        }
+    }
+
+    var isConfigured: Bool {
+        if authMethod == .oauth {
+            return oauthManager?.isAuthenticated == true && !jiraBaseURL.isEmpty && !projectKey.isEmpty
+        } else {
+            return !jiraBaseURL.isEmpty && !jiraUsername.isEmpty && !jiraToken.isEmpty && !projectKey.isEmpty
+        }
     }
 
     private var cancellables = Set<AnyCancellable>()
+
+    // MARK: - Add Authentication
+    private func addAuthentication(to request: inout URLRequest) async -> Bool {
+        if authMethod == .oauth {
+            guard let token = await oauthManager?.getValidAccessToken() else {
+                await MainActor.run {
+                    errorMessage = "Authentification OAuth requise. Veuillez vous connecter."
+                }
+                return false
+            }
+            request.addBearerAuth(token: token)
+        } else {
+            request.addBasicAuth(username: jiraUsername, token: jiraToken)
+        }
+        return true
+    }
+
+    private enum JiraError: LocalizedError {
+        case configuration(String)
+        case invalidResponse(String)
+        case http(statusCode: Int, message: String)
+
+        var errorDescription: String? {
+            switch self {
+            case .configuration(let message):
+                return message
+            case .invalidResponse(let message):
+                return message
+            case .http(let statusCode, let message):
+                return "HTTP \(statusCode): \(message)"
+            }
+        }
+    }
+
+    private func validateConfiguration() async -> Bool {
+        if jiraBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            await MainActor.run {
+                errorMessage = "URL Jira manquante"
+            }
+            return false
+        }
+        if jiraUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            await MainActor.run {
+                errorMessage = "Nom d'utilisateur Jira manquant"
+            }
+            return false
+        }
+        if jiraToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            await MainActor.run {
+                errorMessage = "Token / mot de passe Jira manquant"
+            }
+            return false
+        }
+        if projectKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            await MainActor.run {
+                errorMessage = "Clé de projet Jira manquante"
+            }
+            return false
+        }
+        return true
+    }
+
+    private func decodeJiraError(from data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        if let messages = json["errorMessages"] as? [String], !messages.isEmpty {
+            return messages.joined(separator: " ")
+        }
+        if let errors = json["errors"] as? [String: Any], !errors.isEmpty {
+            let pairs = errors.map { "\($0.key): \($0.value)" }.sorted()
+            return pairs.joined(separator: " ")
+        }
+        return nil
+    }
 
     // MARK: - Fetch Sprints
     func fetchSprints() async {
@@ -38,12 +136,37 @@ class JiraManager: ObservableObject {
             errorMessage = nil
         }
 
-        // For Jira Server, we need to get the board ID first
-        guard let boardId = await getBoardId() else {
+        guard await validateConfiguration() else {
             await MainActor.run {
                 isLoading = false
-                errorMessage = "Could not find board for project"
             }
+            return
+        }
+
+        // For Jira Server, we need to get the board ID first
+        let boardId: Int?
+        do {
+            boardId = try await getBoardId()
+        } catch {
+            await MainActor.run {
+                self.sprints = []
+                self.selectedSprint = nil
+                self.isLoading = false
+                self.errorMessage = error.localizedDescription
+            }
+            // Still allow fetching issues without sprint/board
+            await fetchIssues(for: nil)
+            return
+        }
+
+        guard let boardId else {
+            await MainActor.run {
+                self.sprints = []
+                self.selectedSprint = nil
+                self.isLoading = false
+                self.errorMessage = "Aucun board Jira trouvé pour le projet \(projectKey)"
+            }
+            await fetchIssues(for: nil)
             return
         }
 
@@ -57,14 +180,23 @@ class JiraManager: ObservableObject {
         }
 
         var request = URLRequest(url: url)
-        request.addBasicAuth(username: jiraUsername, token: jiraToken)
+        guard await addAuthentication(to: &request) else {
+            await MainActor.run {
+                isLoading = false
+            }
+            return
+        }
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                throw URLError(.badServerResponse)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw JiraError.invalidResponse("Réponse HTTP invalide")
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let details = decodeJiraError(from: data)
+                    ?? HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+                throw JiraError.http(statusCode: httpResponse.statusCode, message: details)
             }
 
             let sprintResponse = try JSONDecoder().decode(JiraSprintResponse.self, from: data)
@@ -78,7 +210,7 @@ class JiraManager: ObservableObject {
             }
         } catch {
             await MainActor.run {
-                self.errorMessage = "Failed to fetch sprints: \(error.localizedDescription)"
+                self.errorMessage = "Échec chargement des sprints: \(error.localizedDescription)"
                 isLoading = false
             }
         }
@@ -89,6 +221,13 @@ class JiraManager: ObservableObject {
         await MainActor.run {
             isLoading = true
             errorMessage = nil
+        }
+
+        guard await validateConfiguration() else {
+            await MainActor.run {
+                isLoading = false
+            }
+            return
         }
 
         let jql: String
@@ -115,14 +254,23 @@ class JiraManager: ObservableObject {
         }
 
         var request = URLRequest(url: url)
-        request.addBasicAuth(username: jiraUsername, token: jiraToken)
+        guard await addAuthentication(to: &request) else {
+            await MainActor.run {
+                isLoading = false
+            }
+            return
+        }
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                throw URLError(.badServerResponse)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw JiraError.invalidResponse("Réponse HTTP invalide")
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let details = decodeJiraError(from: data)
+                    ?? HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+                throw JiraError.http(statusCode: httpResponse.statusCode, message: details)
             }
 
             let searchResponse = try JSONDecoder().decode(JiraSearchResponse.self, from: data)
@@ -133,32 +281,47 @@ class JiraManager: ObservableObject {
             }
         } catch {
             await MainActor.run {
-                self.errorMessage = "Failed to fetch issues: \(error.localizedDescription)"
+                self.errorMessage = "Échec chargement des tickets: \(error.localizedDescription)"
                 isLoading = false
             }
         }
     }
 
     // MARK: - Get Board ID
-    private func getBoardId() async -> Int? {
+    private func getBoardId() async throws -> Int {
         let urlString = "\(jiraBaseURL)/rest/agile/1.0/board"
         var components = URLComponents(string: urlString)!
         components.queryItems = [
             URLQueryItem(name: "projectKeyOrId", value: projectKey)
         ]
 
-        guard let url = components.url else { return nil }
+        guard let url = components.url else {
+            throw JiraError.invalidResponse("URL Jira invalide")
+        }
 
         var request = URLRequest(url: url)
-        request.addBasicAuth(username: jiraUsername, token: jiraToken)
+        guard await addAuthentication(to: &request) else {
+            throw JiraError.configuration("Authentification échouée")
+        }
 
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw JiraError.invalidResponse("Réponse HTTP invalide")
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let details = decodeJiraError(from: data)
+                    ?? HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+                throw JiraError.http(statusCode: httpResponse.statusCode, message: details)
+            }
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             let values = json?["values"] as? [[String: Any]]
-            return values?.first?["id"] as? Int
+            if let boardId = values?.first?["id"] as? Int {
+                return boardId
+            }
+            throw JiraError.invalidResponse("Aucun board trouvé pour le projet \(projectKey)")
         } catch {
-            return nil
+            throw error
         }
     }
 
@@ -235,5 +398,9 @@ extension URLRequest {
         let credentialsData = credentials.data(using: .utf8)!
         let base64Credentials = credentialsData.base64EncodedString()
         setValue("Basic \(base64Credentials)", forHTTPHeaderField: "Authorization")
+    }
+
+    mutating func addBearerAuth(token: String) {
+        setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     }
 }

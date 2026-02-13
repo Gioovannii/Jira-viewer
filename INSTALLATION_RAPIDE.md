@@ -34,12 +34,16 @@
    Clé du projet:     LBCMONSPE
    ```
 
+   **⚠️ Problème de connexion?** Voir le guide détaillé: [CONFIGURATION_JIRA.md](CONFIGURATION_JIRA.md)
+
 5. **Optionnel** - Pour les résumés IA:
    - Créez un compte sur https://console.anthropic.com
    - Créez une clé API
    - Collez-la dans **Clé API Claude**
 
 6. **Fermez** les Settings et profitez! 🎉
+
+   **Important:** L'app se connecte automatiquement quand vous fermez les Settings. Attendez quelques secondes que les sprints apparaissent.
 
 ---
 
