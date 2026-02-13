@@ -225,7 +225,7 @@ class JiraManager: ObservableObject {
         components.queryItems = [
             URLQueryItem(name: "jql", value: jql),
             URLQueryItem(name: "maxResults", value: "100"),
-            URLQueryItem(name: "fields", value: "summary,description,status,assignee,priority,issuetype,created,customfield_10020")
+            URLQueryItem(name: "fields", value: "summary,description,status,assignee,priority,issuetype,created,updated,resolutiondate,customfield_10020,timetracking")
         ]
 
         guard let url = components.url else {
@@ -310,11 +310,8 @@ class JiraManager: ObservableObject {
 
     // MARK: - Generate Sprint Review Summary (Local - No API needed)
     func generateSprintReview(for sprint: Sprint) async {
-        print("🔵 DEBUG: Starting generateSprintReview for sprint: \(sprint.name)")
-
         // Calculer les statistiques du sprint
         let totalIssues = issues.count
-        print("🔵 DEBUG: Total issues: \(totalIssues)")
 
         let doneIssues = issues.filter { $0.status.lowercased().contains("done") || $0.status.lowercased().contains("terminé") || $0.status.lowercased().contains("closed") }
         let inProgressIssues = issues.filter { $0.status.lowercased().contains("progress") || $0.status.lowercased().contains("cours") }
@@ -327,143 +324,153 @@ class JiraManager: ObservableObject {
         // Générer un résumé structuré local (sans API)
         let completionPercentage = totalIssues > 0 ? Int((Double(doneIssues.count) / Double(totalIssues)) * 100) : 0
 
-        var summaryText = """
-        # Sprint Review - \(sprint.name)
+        // Calculer les statistiques de temps
+        let totalTimeSpentSeconds = issues.compactMap { $0.timeSpentSeconds }.reduce(0, +)
+        let totalEstimateSeconds = issues.compactMap { $0.originalEstimateSeconds }.reduce(0, +)
+        let doneTimeSpentSeconds = doneIssues.compactMap { $0.timeSpentSeconds }.reduce(0, +)
 
-        ## 📊 Vue d'ensemble
-        """
+        var summaryText = "Sprint Review - \(sprint.name)\n\n"
+
+        summaryText += "📊 VUE D'ENSEMBLE\n"
 
         if let goal = sprint.goal, !goal.isEmpty {
-            summaryText += """
-
-            **Objectif du sprint:** \(goal)
-            """
+            summaryText += "Objectif: \(goal)\n"
         }
 
-        summaryText += """
+        summaryText += "Ce sprint comptait \(totalIssues) tickets au total, avec un taux de complétion de \(completionPercentage)%.\n"
 
+        // Ajouter les insights de temps
+        if totalTimeSpentSeconds > 0 {
+            summaryText += "\n⏱️ TEMPS & EFFORT\n"
+            let hoursSpent = Double(totalTimeSpentSeconds) / 3600.0
+            let daysSpent = hoursSpent / 8.0
 
-        Ce sprint comptait **\(totalIssues) tickets** au total, avec un taux de complétion de **\(completionPercentage)%**.
-        """
+            summaryText += "  • Temps total passé: \(String(format: "%.1f", hoursSpent))h (\(String(format: "%.1f", daysSpent)) jours)\n"
+
+            if totalEstimateSeconds > 0 {
+                let hoursEstimated = Double(totalEstimateSeconds) / 3600.0
+                let accuracyPercentage = Int((Double(totalTimeSpentSeconds) / Double(totalEstimateSeconds)) * 100)
+                summaryText += "  • Temps estimé: \(String(format: "%.1f", hoursEstimated))h\n"
+
+                if accuracyPercentage > 120 {
+                    summaryText += "  • Dépassement: +\(accuracyPercentage - 100)% du temps estimé\n"
+                } else if accuracyPercentage < 80 {
+                    summaryText += "  • Sous-estimation évitée: \(100 - accuracyPercentage)% de temps économisé\n"
+                } else {
+                    summaryText += "  • Estimation précise: \(accuracyPercentage)% du temps prévu\n"
+                }
+            }
+
+            if doneTimeSpentSeconds > 0 && totalIssues > 0 {
+                let avgTimePerTicket = Double(doneTimeSpentSeconds) / Double(doneIssues.count) / 3600.0
+                summaryText += "  • Temps moyen par ticket terminé: \(String(format: "%.1f", avgTimePerTicket))h\n"
+            }
+        } else {
+            // Fallback: utiliser le temps de cycle basé sur les dates
+            let doneTicketsWithDates = doneIssues.filter { $0.created != nil && $0.resolved != nil }
+
+            if !doneTicketsWithDates.isEmpty {
+                summaryText += "\n⏱️ TEMPS DE CYCLE\n"
+
+                var totalCycleDays = 0.0
+                for ticket in doneTicketsWithDates {
+                    if let created = ticket.created, let resolved = ticket.resolved {
+                        let cycleDays = resolved.timeIntervalSince(created) / 86400.0
+                        totalCycleDays += cycleDays
+                    }
+                }
+
+                let avgCycleDays = totalCycleDays / Double(doneTicketsWithDates.count)
+
+                summaryText += "  • Temps de cycle moyen: \(String(format: "%.1f", avgCycleDays)) jours\n"
+                summaryText += "  • \(doneTicketsWithDates.count) tickets terminés analysés\n"
+
+                // Identifier les tickets les plus longs
+                let sortedByDuration = doneTicketsWithDates.sorted {
+                    guard let created1 = $0.created, let resolved1 = $0.resolved,
+                          let created2 = $1.created, let resolved2 = $1.resolved else { return false }
+                    return resolved1.timeIntervalSince(created1) > resolved2.timeIntervalSince(created2)
+                }
+
+                if let longest = sortedByDuration.first,
+                   let created = longest.created,
+                   let resolved = longest.resolved {
+                    let days = resolved.timeIntervalSince(created) / 86400.0
+                    summaryText += "  • Ticket le plus long: \(longest.key) (\(String(format: "%.1f", days)) jours)\n"
+                }
+            }
+        }
 
         // Points positifs
-        summaryText += """
-
-
-        ## ✅ Points positifs
-        """
+        summaryText += "\n✅ POINTS POSITIFS\n"
 
         if completionPercentage >= 80 {
-            summaryText += """
-
-            - Excellent taux de complétion (\(completionPercentage)%), objectif du sprint largement atteint
-            """
+            summaryText += "  • Excellent taux de complétion (\(completionPercentage)%)\n"
+            summaryText += "    Objectif du sprint largement atteint\n"
         } else if completionPercentage >= 60 {
-            summaryText += """
-
-            - Bon taux de complétion (\(completionPercentage)%), la majorité des objectifs ont été atteints
-            """
+            summaryText += "  • Bon taux de complétion (\(completionPercentage)%)\n"
+            summaryText += "    La majorité des objectifs ont été atteints\n"
         } else if completionPercentage >= 40 {
-            summaryText += """
-
-            - Progression correcte avec \(completionPercentage)% de complétion
-            """
+            summaryText += "  • Progression correcte avec \(completionPercentage)% de complétion\n"
         }
 
         if doneIssues.count > 0 {
-            summaryText += """
-
-            - \(doneIssues.count) tickets terminés et livrés
-            """
+            summaryText += "  • \(doneIssues.count) tickets terminés et livrés\n"
         }
 
         // Répartition par type
         let sortedTypes = issuesByType.sorted { $0.value.count > $1.value.count }
         if !sortedTypes.isEmpty {
-            summaryText += """
-
-            - Diversité des travaux: \(sortedTypes.map { "\($0.value.count) \($0.key)" }.joined(separator: ", "))
-            """
+            summaryText += "  • Diversité des travaux:\n"
+            summaryText += "    \(sortedTypes.map { "\($0.value.count) \($0.key)" }.joined(separator: ", "))\n"
         }
 
         // Points d'attention
-        summaryText += """
-
-
-        ## ⚠️ Points d'attention
-        """
+        summaryText += "\n⚠️ POINTS D'ATTENTION\n"
 
         if inProgressIssues.count > 0 {
-            summaryText += """
-
-            - \(inProgressIssues.count) tickets encore en cours nécessitent une attention particulière
-            """
+            summaryText += "  • \(inProgressIssues.count) tickets encore en cours\n"
+            summaryText += "    Nécessitent une attention particulière\n"
         }
 
         if todoIssues.count > 0 {
-            summaryText += """
-
-            - \(todoIssues.count) tickets n'ont pas été démarrés
-            """
+            summaryText += "  • \(todoIssues.count) tickets n'ont pas été démarrés\n"
         }
 
         if completionPercentage < 60 {
-            summaryText += """
-
-            - Le taux de complétion (\(completionPercentage)%) suggère des ajustements dans l'estimation ou la capacité de l'équipe
-            """
+            summaryText += "  • Taux de complétion (\(completionPercentage)%)\n"
+            summaryText += "    Suggère des ajustements dans l'estimation\n"
+            summaryText += "    ou la capacité de l'équipe\n"
         }
 
         // Tickets terminés par type
         if !doneByType.isEmpty {
-            summaryText += """
-
-
-            ## 📋 Tickets terminés par type
-            """
+            summaryText += "\n📋 TICKETS TERMINÉS PAR TYPE\n"
             for (type, tickets) in doneByType.sorted(by: { $0.value.count > $1.value.count }) {
-                summaryText += """
-
-                - **\(type)**: \(tickets.count) ticket\(tickets.count > 1 ? "s" : "")
-                """
+                summaryText += "  • \(type): \(tickets.count) ticket\(tickets.count > 1 ? "s" : "")\n"
             }
         }
 
         // Recommandations
-        summaryText += """
-
-
-        ## 💡 Recommandations pour le prochain sprint
-        """
+        summaryText += "\n💡 RECOMMANDATIONS\n"
 
         if completionPercentage < 60 {
-            summaryText += """
-
-            - Revoir la capacité de l'équipe et ajuster le nombre de tickets planifiés
-            """
+            summaryText += "  • Revoir la capacité de l'équipe\n"
+            summaryText += "    Ajuster le nombre de tickets planifiés\n"
         }
 
         if inProgressIssues.count > totalIssues / 3 {
-            summaryText += """
-
-            - Limiter le nombre de tickets en cours simultanément pour améliorer le flux
-            """
+            summaryText += "  • Limiter le nombre de tickets en cours\n"
+            summaryText += "    simultanément pour améliorer le flux\n"
         }
 
         if todoIssues.count > 0 {
-            summaryText += """
-
-            - Prioriser les tickets non démarrés ou les reporter au prochain sprint
-            """
+            summaryText += "  • Prioriser les tickets non démarrés\n"
+            summaryText += "    ou les reporter au prochain sprint\n"
         }
 
-        summaryText += """
-
-        - Continuer les rétrospectives pour identifier les améliorations possibles
-        """
-
-        print("🟢 DEBUG: Summary generated locally")
-        print("🟢 DEBUG: Summary length: \(summaryText.count) characters")
+        summaryText += "  • Continuer les rétrospectives pour identifier\n"
+        summaryText += "    les améliorations possibles"
 
         let summary = IssueSummary(
             id: "\(sprint.id)",
@@ -474,7 +481,6 @@ class JiraManager: ObservableObject {
 
         await MainActor.run {
             self.summaries["SPRINT-\(sprint.id)"] = summary
-            print("🟢 DEBUG: Summary saved successfully")
         }
     }
 }

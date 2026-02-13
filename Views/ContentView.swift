@@ -117,6 +117,9 @@ struct SprintListView: View {
                 }) {
                     Image(systemName: "arrow.clockwise")
                 }
+                .buttonStyle(.borderless)
+                .controlSize(.large)
+                .tint(.accentColor)
                 .disabled(jiraManager.isLoading)
             }
         }
@@ -229,6 +232,9 @@ struct IssueListView: View {
                     Label(showSprintReview ? "Tickets" : "Sprint Review",
                           systemImage: showSprintReview ? "list.bullet" : "chart.bar.doc.horizontal")
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .tint(.accentColor)
             }
 
             if let error = jiraManager.errorMessage {
@@ -328,6 +334,9 @@ struct IssueDetailView: View {
                         }) {
                             Label("Ouvrir dans Jira", systemImage: "arrow.up.right.square")
                         }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.accentColor)
                     }
 
                     Text(issue.summary)
@@ -398,6 +407,8 @@ struct SprintReviewView: View {
     @EnvironmentObject var jiraManager: JiraManager
     let sprint: Sprint
     @State private var isGenerating = false
+    @State private var displayedText = ""
+    @State private var animationTask: Task<Void, Never>?
 
     var sprintSummaryKey: String {
         "SPRINT-\(sprint.id)"
@@ -499,42 +510,71 @@ struct SprintReviewView: View {
 
                 Divider()
 
-                // Résumé IA
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Label("Résumé du Sprint", systemImage: "doc.text.fill")
-                            .font(.headline)
-                        Spacer()
+                // Résumé du Sprint
+                if stats.total > 0 {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Label("Résumé du Sprint", systemImage: "doc.text.fill")
+                                .font(.headline)
+                            Spacer()
 
-                        if isGenerating {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                        } else {
-                            Button(action: {
-                                Task {
-                                    isGenerating = true
-                                    await jiraManager.generateSprintReview(for: sprint)
-                                    isGenerating = false
+                            if isGenerating {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                            } else {
+                                Button(action: {
+                                    Task {
+                                        isGenerating = true
+                                        await jiraManager.generateSprintReview(for: sprint)
+                                        isGenerating = false
+                                    }
+                                }) {
+                                    Label(summary == nil ? "Générer le Résumé" : "Régénérer",
+                                          systemImage: "arrow.clockwise")
                                 }
-                            }) {
-                                Label(summary == nil ? "Générer le Résumé" : "Régénérer",
-                                      systemImage: "arrow.clockwise")
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.large)
+                                .tint(.accentColor)
                             }
                         }
-                    }
 
-                    if let summary = summary {
-                        ScrollView {
-                            Text(summary.summary)
+                        if let summary = summary {
+                            ScrollView {
+                                Text(displayedText)
+                                    .font(.body)
+                                    .lineSpacing(3)
+                                    .padding()
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .textSelection(.enabled)
+                            }
+                            .frame(maxHeight: 400)
+                            .background(Color.blue.opacity(0.05))
+                            .cornerRadius(8)
+                            .onAppear {
+                                startTypingAnimation(fullText: summary.summary)
+                            }
+                            .onChange(of: summary.summary) { newText in
+                                startTypingAnimation(fullText: newText)
+                            }
+                        } else {
+                            Text("Cliquez sur 'Générer le Résumé' pour créer un résumé structuré du sprint")
+                                .foregroundColor(.secondary)
+                                .italic()
                                 .padding()
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .textSelection(.enabled)
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(8)
                         }
-                        .frame(maxHeight: 400)
-                        .background(Color.blue.opacity(0.05))
-                        .cornerRadius(8)
-                    } else {
-                        Text("Cliquez sur 'Générer le Résumé' pour créer un résumé structuré du sprint")
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Label("Résumé du Sprint", systemImage: "doc.text.fill")
+                                .font(.headline)
+                            Spacer()
+                        }
+
+                        Text("Aucun ticket dans ce sprint. Ajoutez des tickets pour générer un résumé.")
                             .foregroundColor(.secondary)
                             .italic()
                             .padding()
@@ -547,6 +587,50 @@ struct SprintReviewView: View {
             .padding()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onDisappear {
+            animationTask?.cancel()
+        }
+    }
+
+    private func startTypingAnimation(fullText: String) {
+        // Annuler l'animation en cours si elle existe
+        animationTask?.cancel()
+
+        // Réinitialiser le texte affiché
+        displayedText = ""
+
+        // Créer une nouvelle tâche d'animation
+        animationTask = Task {
+            let lines = fullText.split(separator: "\n", omittingEmptySubsequences: false)
+
+            for line in lines {
+                // Vérifier si la tâche a été annulée
+                if Task.isCancelled { return }
+
+                // Ajouter la ligne avec un petit délai
+                await MainActor.run {
+                    if !displayedText.isEmpty {
+                        displayedText += "\n"
+                    }
+                    displayedText += String(line)
+                }
+
+                // Délai progressif: plus rapide au début, plus lent pour les titres/sections
+                let delay: UInt64
+                if line.hasPrefix("📊") || line.hasPrefix("✅") || line.hasPrefix("⚠️") || line.hasPrefix("📋") || line.hasPrefix("💡") {
+                    // Titres avec emojis: pause plus longue
+                    delay = 80_000_000 // 0.08 secondes
+                } else if line.isEmpty {
+                    // Lignes vides: pause très courte
+                    delay = 10_000_000 // 0.01 secondes
+                } else {
+                    // Lignes normales
+                    delay = 30_000_000 // 0.03 secondes
+                }
+
+                try? await Task.sleep(nanoseconds: delay)
+            }
+        }
     }
 }
 
@@ -567,8 +651,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(color.opacity(0.1))
-        .cornerRadius(8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
