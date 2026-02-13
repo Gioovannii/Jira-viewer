@@ -12,10 +12,6 @@
 		377BEB3D76A35BF67CD69488 /* JiraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 629DA2EFA19B5393C6BF7FE6 /* JiraModels.swift */; };
 		464E99C3ED9126B5BB4EB239 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750097F4590FB1605AF91566 /* ContentView.swift */; };
 		EEE4B76F637AD9D2846522F5 /* JiraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F96D2F77091D1EB38FA14A0B /* JiraManager.swift */; };
-		5E4D7955543746DD98262FDB /* OAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0064C937B1A54755A8198C3B /* OAuthManager.swift */; };
-		497CC9D45F2E47FD8D80B477 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12A03164797140119BEDD9EF /* KeychainManager.swift */; };
-		10A12D4570EF4D05B1575F68 /* OAuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC5E3639DB249768870F33D /* OAuthModels.swift */; };
-		31E02C7168074068B9BA9DEA /* OAuthWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABDE16A032314447AF06262D /* OAuthWebView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,10 +23,6 @@
 		D9A997446779FDF5414912D1 /* JiraViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JiraViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E6A704E6C574102D69FAE807 /* JiraViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JiraViewerApp.swift; sourceTree = "<group>"; };
 		F96D2F77091D1EB38FA14A0B /* JiraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JiraManager.swift; sourceTree = "<group>"; };
-		0064C937B1A54755A8198C3B /* OAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthManager.swift; sourceTree = "<group>"; };
-		12A03164797140119BEDD9EF /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
-		5BC5E3639DB249768870F33D /* OAuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthModels.swift; sourceTree = "<group>"; };
-		ABDE16A032314447AF06262D /* OAuthWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthWebView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -70,7 +62,6 @@
 		65D973332C7B3BC677DACB35 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				5BC5E3639DB249768870F33D /* OAuthModels.swift */,
 				629DA2EFA19B5393C6BF7FE6 /* JiraModels.swift */,
 			);
 			path = Models;
@@ -79,8 +70,6 @@
 		8FB84548B6C06453A32FE965 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				0064C937B1A54755A8198C3B /* OAuthManager.swift */,
-				12A03164797140119BEDD9EF /* KeychainManager.swift */,
 				F96D2F77091D1EB38FA14A0B /* JiraManager.swift */,
 			);
 			path = Services;
@@ -89,7 +78,6 @@
 		F567971623B32087D03B47D2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				ABDE16A032314447AF06262D /* OAuthWebView.swift */,
 				750097F4590FB1605AF91566 /* ContentView.swift */,
 				5FDDD094BE957AB929F151F2 /* SettingsView.swift */,
 			);
@@ -154,10 +142,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5E4D7955543746DD98262FDB /* OAuthManager.swift in Sources */,
-				497CC9D45F2E47FD8D80B477 /* KeychainManager.swift in Sources */,
-				10A12D4570EF4D05B1575F68 /* OAuthModels.swift in Sources */,
-				31E02C7168074068B9BA9DEA /* OAuthWebView.swift in Sources */,
 				464E99C3ED9126B5BB4EB239 /* ContentView.swift in Sources */,
 				EEE4B76F637AD9D2846522F5 /* JiraManager.swift in Sources */,
 				377BEB3D76A35BF67CD69488 /* JiraModels.swift in Sources */,

@@ -1,100 +1,68 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @EnvironmentObject var oauthManager: OAuthManager
     @AppStorage("jiraBaseURL") private var jiraBaseURL = "https://jira.ets.mpi-internal.com"
-    @AppStorage("jiraUsername") private var jiraUsername = ""
     @AppStorage("jiraToken") private var jiraToken = ""
     @AppStorage("claudeAPIKey") private var claudeAPIKey = ""
     @AppStorage("projectKey") private var projectKey = "LBCMONSPE"
-    @AppStorage("authMethod") private var authMethodRaw = AuthMethod.basicAuth.rawValue
-
-    @State private var showingOAuthLogin = false
-
-    private var authMethod: AuthMethod {
-        get { AuthMethod(rawValue: authMethodRaw) ?? .basicAuth }
-        set { authMethodRaw = newValue.rawValue }
-    }
 
     var body: some View {
         Form {
             Section("Configuration Jira") {
                 TextField("URL Jira", text: $jiraBaseURL)
                     .textFieldStyle(.roundedBorder)
+                    .disabled(true)
 
                 TextField("Clé du projet", text: $projectKey)
                     .textFieldStyle(.roundedBorder)
+                    .disabled(true)
+
+                Text("Configuration pré-définie pour votre instance Jira")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
-            Section("Méthode d'Authentification") {
-                Picker("Méthode", selection: Binding(
-                    get: { authMethod },
-                    set: { authMethodRaw = $0.rawValue }
-                )) {
-                    Text("Authentification Basique").tag(AuthMethod.basicAuth)
-                    Text("Okta SSO (OAuth)").tag(AuthMethod.oauth)
-                }
-                .pickerStyle(.segmented)
-            }
+            Section("Authentification") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Personal Access Token")
+                        .font(.headline)
 
-            if authMethod == .oauth {
-                Section("Okta SSO") {
-                    if oauthManager.isAuthenticated {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                                Text("Connecté")
-                                    .fontWeight(.semibold)
-                            }
-
-                            if let email = oauthManager.userEmail {
-                                Text("Utilisateur: \(email)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Button("Se déconnecter") {
-                                oauthManager.logout()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.red)
-                        }
-                        .padding(.vertical, 8)
-                    } else {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Connectez-vous avec votre compte Okta pour accéder à Jira.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            Button(action: {
-                                showingOAuthLogin = true
-                            }) {
-                                Label("Se connecter avec Okta SSO", systemImage: "person.badge.key")
-                            }
-                            .buttonStyle(.borderedProminent)
-
-                            if let error = oauthManager.authenticationError {
-                                Text("Erreur: \(error)")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            }
-                        }
-                        .padding(.vertical, 8)
-                    }
-                }
-            } else {
-                Section("Authentification Basique") {
-                    TextField("Nom d'utilisateur", text: $jiraUsername)
-                        .textFieldStyle(.roundedBorder)
-
-                    SecureField("Token API / Mot de passe", text: $jiraToken)
-                        .textFieldStyle(.roundedBorder)
-
-                    Text("Pour Jira Server, utilisez votre mot de passe. Pour Jira Cloud, créez un API token depuis votre profil Atlassian.")
+                    Text("Utilisez votre Personal Access Token Jira pour vous authentifier.")
                         .font(.caption)
                         .foregroundColor(.secondary)
+
+                    SecureField("Personal Access Token", text: $jiraToken)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+
+                    if jiraToken.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Comment créer un token:")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+
+                            Text("1. Allez sur Jira > Profile > Personal Access Tokens")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text("2. Cliquez 'Create token'")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text("3. Copiez et collez le token ci-dessus")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.top, 4)
+                    } else {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Token configuré")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
+                    }
                 }
+                .padding(.vertical, 8)
             }
 
             Section("Configuration Claude AI") {
@@ -114,10 +82,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 600, height: 600)
-        .sheet(isPresented: $showingOAuthLogin) {
-            OAuthLoginWindow(oauthManager: oauthManager)
-        }
+        .frame(width: 600, height: 500)
     }
 }
 

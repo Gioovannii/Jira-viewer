@@ -17,31 +17,35 @@ struct ContentView: View {
                         .font(.title)
                         .fontWeight(.semibold)
 
-                    Text("Veuillez configurer vos identifiants Jira dans les préférences")
+                    Text("Veuillez configurer votre Personal Access Token Jira dans les préférences")
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
 
                     if #available(macOS 14.0, *) {
                         SettingsLink {
-                            Label("Ouvrir les Préférences", systemImage: "gear")
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
+                            HStack {
+                                Image(systemName: "key.fill")
+                                Text("Configurer le Token")
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
                         }
                         .buttonStyle(.borderedProminent)
-                        .keyboardShortcut(",", modifiers: .command)
+                        .controlSize(.large)
                     } else {
                         Button(action: {
-                            if let url = URL(string: "x-apple.systempreferences:") {
-                                NSWorkspace.shared.open(url)
-                            }
+                            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
                         }) {
-                            Label("Ouvrir les Préférences", systemImage: "gear")
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
+                            HStack {
+                                Image(systemName: "key.fill")
+                                Text("Configurer le Token")
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
                         }
                         .buttonStyle(.borderedProminent)
-                        .keyboardShortcut(",", modifiers: .command)
+                        .controlSize(.large)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

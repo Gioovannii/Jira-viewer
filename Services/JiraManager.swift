@@ -9,14 +9,8 @@ class JiraManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var summaries: [String: IssueSummary] = [:]
 
-    var oauthManager: OAuthManager?
-
     var jiraBaseURL: String {
-        UserDefaults.standard.string(forKey: "jiraBaseURL") ?? ""
-    }
-
-    private var jiraUsername: String {
-        UserDefaults.standard.string(forKey: "jiraUsername") ?? ""
+        UserDefaults.standard.string(forKey: "jiraBaseURL") ?? "https://jira.ets.mpi-internal.com"
     }
 
     private var jiraToken: String {
@@ -28,45 +22,24 @@ class JiraManager: ObservableObject {
     }
 
     private var projectKey: String {
-        UserDefaults.standard.string(forKey: "projectKey") ?? ""
-    }
-
-    private var authMethod: AuthMethod {
-        get {
-            if let rawValue = UserDefaults.standard.string(forKey: "authMethod"),
-               let method = AuthMethod(rawValue: rawValue) {
-                return method
-            }
-            return .basicAuth
-        }
-        set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "authMethod")
-        }
+        UserDefaults.standard.string(forKey: "projectKey") ?? "LBCMONSPE"
     }
 
     var isConfigured: Bool {
-        if authMethod == .oauth {
-            return oauthManager?.isAuthenticated == true && !jiraBaseURL.isEmpty && !projectKey.isEmpty
-        } else {
-            return !jiraBaseURL.isEmpty && !jiraUsername.isEmpty && !jiraToken.isEmpty && !projectKey.isEmpty
-        }
+        return !jiraToken.isEmpty && !jiraBaseURL.isEmpty && !projectKey.isEmpty
     }
 
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Add Authentication
     private func addAuthentication(to request: inout URLRequest) async -> Bool {
-        if authMethod == .oauth {
-            guard let token = await oauthManager?.getValidAccessToken() else {
-                await MainActor.run {
-                    errorMessage = "Authentification OAuth requise. Veuillez vous connecter."
-                }
-                return false
+        guard !jiraToken.isEmpty else {
+            await MainActor.run {
+                errorMessage = "Token manquant. Veuillez configurer votre Personal Access Token."
             }
-            request.addBearerAuth(token: token)
-        } else {
-            request.addBasicAuth(username: jiraUsername, token: jiraToken)
+            return false
         }
+        request.addBearerAuth(token: jiraToken)
         return true
     }
 
@@ -94,15 +67,9 @@ class JiraManager: ObservableObject {
             }
             return false
         }
-        if jiraUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            await MainActor.run {
-                errorMessage = "Nom d'utilisateur Jira manquant"
-            }
-            return false
-        }
         if jiraToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             await MainActor.run {
-                errorMessage = "Token / mot de passe Jira manquant"
+                errorMessage = "Personal Access Token manquant"
             }
             return false
         }
