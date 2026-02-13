@@ -18,10 +18,6 @@ class JiraManager: ObservableObject {
         UserDefaults.standard.string(forKey: "jiraToken") ?? ""
     }
 
-    private var openAIAPIKey: String {
-        UserDefaults.standard.string(forKey: "claudeAPIKey") ?? ""
-    }
-
     private var projectKey: String {
         UserDefaults.standard.string(forKey: "projectKey") ?? "LBCMONSPE"
     }

@@ -3,7 +3,6 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("jiraBaseURL") private var jiraBaseURL = "https://jira.ets.mpi-internal.com"
     @AppStorage("jiraToken") private var jiraToken = ""
-    @AppStorage("claudeAPIKey") private var claudeAPIKey = ""
     @AppStorage("projectKey") private var projectKey = "LBCMONSPE"
 
     var body: some View {
