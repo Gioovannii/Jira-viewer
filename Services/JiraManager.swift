@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import NaturalLanguage
 
 class JiraManager: ObservableObject {
     @Published var issues: [JiraIssue] = []
@@ -17,7 +18,7 @@ class JiraManager: ObservableObject {
         UserDefaults.standard.string(forKey: "jiraToken") ?? ""
     }
 
-    private var claudeAPIKey: String {
+    private var openAIAPIKey: String {
         UserDefaults.standard.string(forKey: "claudeAPIKey") ?? ""
     }
 
@@ -307,17 +308,14 @@ class JiraManager: ObservableObject {
         }
     }
 
-    // MARK: - Generate Sprint Review Summary with Claude
+    // MARK: - Generate Sprint Review Summary (Local - No API needed)
     func generateSprintReview(for sprint: Sprint) async {
-        guard !claudeAPIKey.isEmpty else {
-            await MainActor.run {
-                errorMessage = "Claude API key not configured"
-            }
-            return
-        }
+        print("🔵 DEBUG: Starting generateSprintReview for sprint: \(sprint.name)")
 
         // Calculer les statistiques du sprint
         let totalIssues = issues.count
+        print("🔵 DEBUG: Total issues: \(totalIssues)")
+
         let doneIssues = issues.filter { $0.status.lowercased().contains("done") || $0.status.lowercased().contains("terminé") || $0.status.lowercased().contains("closed") }
         let inProgressIssues = issues.filter { $0.status.lowercased().contains("progress") || $0.status.lowercased().contains("cours") }
         let todoIssues = issues.filter { !$0.status.lowercased().contains("done") && !$0.status.lowercased().contains("progress") && !$0.status.lowercased().contains("terminé") && !$0.status.lowercased().contains("cours") && !$0.status.lowercased().contains("closed") }
@@ -326,75 +324,157 @@ class JiraManager: ObservableObject {
         let issuesByType = Dictionary(grouping: issues) { $0.issueType }
         let doneByType = Dictionary(grouping: doneIssues) { $0.issueType }
 
-        let issuesDescription = issues.map { "- [\($0.key)] \($0.summary) - Status: \($0.status)" }.joined(separator: "\n")
+        // Générer un résumé structuré local (sans API)
+        let completionPercentage = totalIssues > 0 ? Int((Double(doneIssues.count) / Double(totalIssues)) * 100) : 0
 
-        let prompt = """
-        Génère un résumé de Sprint Review en français pour ce sprint Jira:
+        var summaryText = """
+        # Sprint Review - \(sprint.name)
 
-        Sprint: \(sprint.name)
-        Goal: \(sprint.goal ?? "Aucun objectif défini")
-
-        Statistiques:
-        - Total tickets: \(totalIssues)
-        - Tickets Done: \(doneIssues.count) (\(totalIssues > 0 ? Int((Double(doneIssues.count) / Double(totalIssues)) * 100) : 0)%)
-        - En cours: \(inProgressIssues.count)
-        - À faire: \(todoIssues.count)
-
-        Types de tickets:
-        \(issuesByType.map { type, tickets in "- \(type): \(tickets.count) total, \(doneByType[type]?.count ?? 0) done" }.joined(separator: "\n"))
-
-        Liste des tickets:
-        \(issuesDescription)
-
-        Génère un résumé structuré pour une sprint review avec:
-        1. Vue d'ensemble (objectifs atteints, progression)
-        2. Points positifs (ce qui a bien fonctionné)
-        3. Points d'attention (ce qui reste à faire, blocages éventuels)
-        4. Recommandations pour le prochain sprint
+        ## 📊 Vue d'ensemble
         """
 
-        let url = URL(string: "https://api.anthropic.com/v1/messages")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(claudeAPIKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        if let goal = sprint.goal, !goal.isEmpty {
+            summaryText += """
 
-        let body: [String: Any] = [
-            "model": "claude-3-5-sonnet-20241022",
-            "max_tokens": 1500,
-            "messages": [
-                [
-                    "role": "user",
-                    "content": prompt
-                ]
-            ]
-        ]
+            **Objectif du sprint:** \(goal)
+            """
+        }
 
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        summaryText += """
 
-        do {
-            let (data, _) = try await URLSession.shared.data(for: request)
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 
-            if let content = json?["content"] as? [[String: Any]],
-               let text = content.first?["text"] as? String {
+        Ce sprint comptait **\(totalIssues) tickets** au total, avec un taux de complétion de **\(completionPercentage)%**.
+        """
 
-                let summary = IssueSummary(
-                    id: "\(sprint.id)",
-                    issueKey: "SPRINT-\(sprint.id)",
-                    summary: text,
-                    generatedAt: Date()
-                )
+        // Points positifs
+        summaryText += """
 
-                await MainActor.run {
-                    self.summaries["SPRINT-\(sprint.id)"] = summary
-                }
+
+        ## ✅ Points positifs
+        """
+
+        if completionPercentage >= 80 {
+            summaryText += """
+
+            - Excellent taux de complétion (\(completionPercentage)%), objectif du sprint largement atteint
+            """
+        } else if completionPercentage >= 60 {
+            summaryText += """
+
+            - Bon taux de complétion (\(completionPercentage)%), la majorité des objectifs ont été atteints
+            """
+        } else if completionPercentage >= 40 {
+            summaryText += """
+
+            - Progression correcte avec \(completionPercentage)% de complétion
+            """
+        }
+
+        if doneIssues.count > 0 {
+            summaryText += """
+
+            - \(doneIssues.count) tickets terminés et livrés
+            """
+        }
+
+        // Répartition par type
+        let sortedTypes = issuesByType.sorted { $0.value.count > $1.value.count }
+        if !sortedTypes.isEmpty {
+            summaryText += """
+
+            - Diversité des travaux: \(sortedTypes.map { "\($0.value.count) \($0.key)" }.joined(separator: ", "))
+            """
+        }
+
+        // Points d'attention
+        summaryText += """
+
+
+        ## ⚠️ Points d'attention
+        """
+
+        if inProgressIssues.count > 0 {
+            summaryText += """
+
+            - \(inProgressIssues.count) tickets encore en cours nécessitent une attention particulière
+            """
+        }
+
+        if todoIssues.count > 0 {
+            summaryText += """
+
+            - \(todoIssues.count) tickets n'ont pas été démarrés
+            """
+        }
+
+        if completionPercentage < 60 {
+            summaryText += """
+
+            - Le taux de complétion (\(completionPercentage)%) suggère des ajustements dans l'estimation ou la capacité de l'équipe
+            """
+        }
+
+        // Tickets terminés par type
+        if !doneByType.isEmpty {
+            summaryText += """
+
+
+            ## 📋 Tickets terminés par type
+            """
+            for (type, tickets) in doneByType.sorted(by: { $0.value.count > $1.value.count }) {
+                summaryText += """
+
+                - **\(type)**: \(tickets.count) ticket\(tickets.count > 1 ? "s" : "")
+                """
             }
-        } catch {
-            await MainActor.run {
-                self.errorMessage = "Failed to generate sprint review: \(error.localizedDescription)"
-            }
+        }
+
+        // Recommandations
+        summaryText += """
+
+
+        ## 💡 Recommandations pour le prochain sprint
+        """
+
+        if completionPercentage < 60 {
+            summaryText += """
+
+            - Revoir la capacité de l'équipe et ajuster le nombre de tickets planifiés
+            """
+        }
+
+        if inProgressIssues.count > totalIssues / 3 {
+            summaryText += """
+
+            - Limiter le nombre de tickets en cours simultanément pour améliorer le flux
+            """
+        }
+
+        if todoIssues.count > 0 {
+            summaryText += """
+
+            - Prioriser les tickets non démarrés ou les reporter au prochain sprint
+            """
+        }
+
+        summaryText += """
+
+        - Continuer les rétrospectives pour identifier les améliorations possibles
+        """
+
+        print("🟢 DEBUG: Summary generated locally")
+        print("🟢 DEBUG: Summary length: \(summaryText.count) characters")
+
+        let summary = IssueSummary(
+            id: "\(sprint.id)",
+            issueKey: "SPRINT-\(sprint.id)",
+            summary: summaryText,
+            generatedAt: Date()
+        )
+
+        await MainActor.run {
+            self.summaries["SPRINT-\(sprint.id)"] = summary
+            print("🟢 DEBUG: Summary saved successfully")
         }
     }
 }

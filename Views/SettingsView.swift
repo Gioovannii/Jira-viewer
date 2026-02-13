@@ -65,12 +65,21 @@ struct SettingsView: View {
                 .padding(.vertical, 8)
             }
 
-            Section("Configuration Claude AI") {
-                SecureField("Clé API Claude", text: $claudeAPIKey)
-                    .textFieldStyle(.roundedBorder)
+            Section("Résumés de Sprint") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "checkmark.shield.fill")
+                            .foregroundColor(.green)
+                        Text("Génération locale et privée")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
 
-                Link("Obtenir une clé API", destination: URL(string: "https://console.anthropic.com/")!)
-                    .font(.caption)
+                    Text("Les résumés de sprint sont générés localement sur votre Mac. Aucune donnée n'est envoyée à un service externe.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
             }
 
             Section("À propos") {

@@ -502,7 +502,7 @@ struct SprintReviewView: View {
                 // Résumé IA
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Label("Résumé IA", systemImage: "sparkles")
+                        Label("Résumé du Sprint", systemImage: "doc.text.fill")
                             .font(.headline)
                         Spacer()
 
@@ -517,20 +517,24 @@ struct SprintReviewView: View {
                                     isGenerating = false
                                 }
                             }) {
-                                Label(summary == nil ? "Générer Sprint Review" : "Régénérer",
-                                      systemImage: "wand.and.stars")
+                                Label(summary == nil ? "Générer le Résumé" : "Régénérer",
+                                      systemImage: "arrow.clockwise")
                             }
                         }
                     }
 
                     if let summary = summary {
-                        Text(summary.summary)
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(8)
+                        ScrollView {
+                            Text(summary.summary)
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                        }
+                        .frame(maxHeight: 400)
+                        .background(Color.blue.opacity(0.05))
+                        .cornerRadius(8)
                     } else {
-                        Text("Cliquez sur 'Générer Sprint Review' pour créer un résumé détaillé avec Claude AI")
+                        Text("Cliquez sur 'Générer le Résumé' pour créer un résumé structuré du sprint")
                             .foregroundColor(.secondary)
                             .italic()
                             .padding()

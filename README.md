@@ -5,16 +5,17 @@
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-Native-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-Application macOS native pour visualiser vos tickets Jira et générer des Sprint Reviews avec IA.
+Application macOS native pour visualiser vos tickets Jira et générer des Sprint Reviews automatiques.
 
 ## 🎯 Aperçu
 
 Une application SwiftUI moderne qui se connecte à votre instance Jira pour:
 - 📊 Visualiser vos tickets par sprint
 - 📈 Générer des Sprint Reviews avec statistiques détaillées
-- 🤖 Résumés intelligents avec Claude AI pour vos sprint reviews
+- 🤖 Résumés automatiques structurés (traitement local, aucune API externe)
 - ⚡️ Interface native rapide et fluide
 - 🔐 Authentification sécurisée avec Personal Access Token
+- 🔒 100% privé - vos données ne quittent jamais votre Mac
 
 ## ✨ Fonctionnalités
 
@@ -31,11 +32,12 @@ Une application SwiftUI moderne qui se connecte à votre instance Jira pour:
   - Répartition par type de ticket
   - Barre de progression visuelle
 
-- **Résumé IA généré par Claude**:
+- **Résumé automatique structuré**:
   - Vue d'ensemble des objectifs atteints
   - Points positifs du sprint
   - Points d'attention et blocages
   - Recommandations pour le prochain sprint
+  - Traitement 100% local et privé
 
 ### Liste de tickets
 - Affichage clair avec priorité, status, et assignation
@@ -49,7 +51,6 @@ Une application SwiftUI moderne qui se connecte à votre instance Jira pour:
 - macOS 13.0 (Ventura) ou supérieur
 - Accès à votre instance Jira
 - Personal Access Token Jira
-- Clé API Claude (pour les résumés IA)
 
 ### Configuration
 
@@ -71,7 +72,7 @@ open JiraViewer.xcodeproj
    - Lancez l'app
    - Allez dans Settings (Cmd+,)
    - Collez votre Personal Access Token
-   - (Optionnel) Ajoutez votre clé API Claude pour les résumés IA
+   - C'est tout ! Les résumés sont générés localement sans configuration supplémentaire
 
 ## 📖 Utilisation
 
@@ -79,7 +80,7 @@ open JiraViewer.xcodeproj
 1. Sélectionnez un sprint dans la liste de gauche
 2. Cliquez sur le bouton "Sprint Review" (icône graphique) dans la barre d'outils
 3. Consultez les statistiques du sprint
-4. Cliquez sur "Générer Sprint Review" pour obtenir un résumé IA détaillé
+4. Cliquez sur "Générer le Résumé" pour obtenir un résumé structuré automatique
 
 ### Navigation des tickets
 1. Les sprints apparaissent dans la barre latérale gauche
@@ -105,15 +106,16 @@ JiraViewer/
 
 - **Jira REST API v2**: Tickets et recherche
 - **Jira Agile API v1.0**: Boards et sprints
-- **Claude API**: Génération de Sprint Reviews IA
 
-## 🔒 Sécurité
+## 🔒 Sécurité et Confidentialité
 
-- Authentification via Personal Access Token
-- Bearer token pour toutes les requêtes API
-- Credentials stockés dans UserDefaults (envisager Keychain pour production)
-- Communication HTTPS uniquement
-- Support du sandbox macOS
+- ✅ Authentification via Personal Access Token
+- ✅ Bearer token pour toutes les requêtes API
+- ✅ Credentials stockés dans UserDefaults (envisager Keychain pour production)
+- ✅ Communication HTTPS uniquement avec votre instance Jira
+- ✅ **100% privé**: Les résumés sont générés localement, aucune donnée n'est envoyée à des services tiers
+- ✅ Conforme aux politiques de sécurité d'entreprise
+- ✅ Support du sandbox macOS
 
 ## 🤝 Contribution
 
@@ -127,8 +129,7 @@ MIT License - voir [LICENSE](LICENSE)
 
 - 🐛 Bugs: [Issues GitHub](https://github.com/Gioovannii/Jira-viewer/issues)
 - 📚 [Jira API Documentation](https://developer.atlassian.com/server/jira/platform/rest-apis/)
-- 🤖 [Claude API Documentation](https://docs.anthropic.com/)
 
 ---
 
-Développé avec ❤️ en SwiftUI et Claude AI
+Développé avec ❤️ en SwiftUI
