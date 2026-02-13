@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var jiraManager: JiraManager
     @State private var selectedIssue: JiraIssue?
     @State private var showingWelcome = true
+    @State private var showSprintReview = true
 
     var body: some View {
         Group {
@@ -55,13 +56,15 @@ struct ContentView: View {
                     SprintListView(selectedSprint: $jiraManager.selectedSprint)
                 } content: {
                     // Middle - Issue List
-                    IssueListView(selectedIssue: $selectedIssue)
+                    IssueListView(selectedIssue: $selectedIssue, showSprintReview: $showSprintReview)
                 } detail: {
-                    // Detail - Issue Detail
-                    if let issue = selectedIssue {
+                    // Detail - Sprint Review or Issue Detail
+                    if showSprintReview, let sprint = jiraManager.selectedSprint {
+                        SprintReviewView(sprint: sprint)
+                    } else if let issue = selectedIssue {
                         IssueDetailView(issue: issue)
                     } else {
-                        Text("Sélectionnez un ticket")
+                        Text("Sélectionnez un ticket ou affichez le résumé du sprint")
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
@@ -169,12 +172,28 @@ struct SprintRow: View {
     }
 
     private func formatDate(_ dateString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: dateString) else { return dateString }
+        // Essayer plusieurs formats de parsing
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        let displayFormatter = DateFormatter()
-        displayFormatter.dateStyle = .short
-        return displayFormatter.string(from: date)
+        if let date = isoFormatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.locale = Locale(identifier: "fr_FR")
+            displayFormatter.dateFormat = "dd/MM/yyyy"
+            return displayFormatter.string(from: date)
+        }
+
+        // Essayer sans les millisecondes
+        isoFormatter.formatOptions = [.withInternetDateTime]
+        if let date = isoFormatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.locale = Locale(identifier: "fr_FR")
+            displayFormatter.dateFormat = "dd/MM/yyyy"
+            return displayFormatter.string(from: date)
+        }
+
+        // Si rien ne fonctionne, retourner la string brute
+        return dateString
     }
 }
 
@@ -182,6 +201,7 @@ struct SprintRow: View {
 struct IssueListView: View {
     @EnvironmentObject var jiraManager: JiraManager
     @Binding var selectedIssue: JiraIssue?
+    @Binding var showSprintReview: Bool
 
     var body: some View {
         Group {
@@ -199,12 +219,29 @@ struct IssueListView: View {
         }
         .navigationTitle("Tickets (\(jiraManager.issues.count))")
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: {
+                    showSprintReview.toggle()
+                    if showSprintReview {
+                        selectedIssue = nil
+                    }
+                }) {
+                    Label(showSprintReview ? "Tickets" : "Sprint Review",
+                          systemImage: showSprintReview ? "list.bullet" : "chart.bar.doc.horizontal")
+                }
+            }
+
             if let error = jiraManager.errorMessage {
                 ToolbarItem(placement: .status) {
                     Text(error)
                         .font(.caption)
                         .foregroundColor(.red)
                 }
+            }
+        }
+        .onChange(of: selectedIssue) { newValue in
+            if newValue != nil {
+                showSprintReview = false
             }
         }
     }
@@ -273,11 +310,6 @@ struct IssueRow: View {
 struct IssueDetailView: View {
     @EnvironmentObject var jiraManager: JiraManager
     let issue: JiraIssue
-    @State private var isGeneratingSummary = false
-
-    var summary: IssueSummary? {
-        jiraManager.summaries[issue.key]
-    }
 
     var body: some View {
         ScrollView {
@@ -300,44 +332,6 @@ struct IssueDetailView: View {
 
                     Text(issue.summary)
                         .font(.title3)
-                }
-
-                Divider()
-
-                // AI Summary
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Label("Résumé IA", systemImage: "sparkles")
-                            .font(.headline)
-                        Spacer()
-
-                        if isGeneratingSummary {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                        } else {
-                            Button(action: {
-                                Task {
-                                    isGeneratingSummary = true
-                                    await jiraManager.generateSummary(for: issue)
-                                    isGeneratingSummary = false
-                                }
-                            }) {
-                                Label(summary == nil ? "Générer" : "Régénérer", systemImage: "wand.and.stars")
-                            }
-                        }
-                    }
-
-                    if let summary = summary {
-                        Text(summary.summary)
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(8)
-                    } else {
-                        Text("Cliquez sur 'Générer' pour créer un résumé avec Claude")
-                            .foregroundColor(.secondary)
-                            .italic()
-                    }
                 }
 
                 Divider()
@@ -396,6 +390,181 @@ struct IssueDetailView: View {
             .padding()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+// MARK: - Sprint Review View
+struct SprintReviewView: View {
+    @EnvironmentObject var jiraManager: JiraManager
+    let sprint: Sprint
+    @State private var isGenerating = false
+
+    var sprintSummaryKey: String {
+        "SPRINT-\(sprint.id)"
+    }
+
+    var summary: IssueSummary? {
+        jiraManager.summaries[sprintSummaryKey]
+    }
+
+    var stats: (total: Int, done: Int, inProgress: Int, todo: Int, byType: [String: Int]) {
+        let total = jiraManager.issues.count
+        let done = jiraManager.issues.filter { $0.status.lowercased().contains("done") || $0.status.lowercased().contains("terminé") || $0.status.lowercased().contains("closed") }.count
+        let inProgress = jiraManager.issues.filter { $0.status.lowercased().contains("progress") || $0.status.lowercased().contains("cours") }.count
+        let todo = total - done - inProgress
+
+        let byType = Dictionary(grouping: jiraManager.issues) { $0.issueType }
+            .mapValues { $0.count }
+
+        return (total, done, inProgress, todo, byType)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "chart.bar.doc.horizontal.fill")
+                            .font(.title)
+                            .foregroundColor(.blue)
+                        VStack(alignment: .leading) {
+                            Text("Sprint Review")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            Text(sprint.name)
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    if let goal = sprint.goal, !goal.isEmpty {
+                        Text("Objectif: \(goal)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .italic()
+                    }
+                }
+
+                Divider()
+
+                // Statistiques
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Statistiques")
+                        .font(.headline)
+
+                    HStack(spacing: 20) {
+                        StatCard(title: "Total", value: "\(stats.total)", color: .blue)
+                        StatCard(title: "Done", value: "\(stats.done)", color: .green)
+                        StatCard(title: "En cours", value: "\(stats.inProgress)", color: .orange)
+                        StatCard(title: "À faire", value: "\(stats.todo)", color: .gray)
+                    }
+
+                    // Progression
+                    let progress = stats.total > 0 ? Double(stats.done) / Double(stats.total) : 0
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Progression")
+                                .font(.subheadline)
+                            Spacer()
+                            Text("\(Int(progress * 100))%")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                        ProgressView(value: progress)
+                            .tint(.green)
+                    }
+
+                    // Par type
+                    if !stats.byType.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Par type")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                            ForEach(stats.byType.sorted(by: { $0.value > $1.value }), id: \.key) { type, count in
+                                HStack {
+                                    Text(type)
+                                    Spacer()
+                                    Text("\(count)")
+                                        .fontWeight(.medium)
+                                }
+                                .font(.caption)
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(12)
+
+                Divider()
+
+                // Résumé IA
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Label("Résumé IA", systemImage: "sparkles")
+                            .font(.headline)
+                        Spacer()
+
+                        if isGenerating {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                        } else {
+                            Button(action: {
+                                Task {
+                                    isGenerating = true
+                                    await jiraManager.generateSprintReview(for: sprint)
+                                    isGenerating = false
+                                }
+                            }) {
+                                Label(summary == nil ? "Générer Sprint Review" : "Régénérer",
+                                      systemImage: "wand.and.stars")
+                            }
+                        }
+                    }
+
+                    if let summary = summary {
+                        Text(summary.summary)
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
+                    } else {
+                        Text("Cliquez sur 'Générer Sprint Review' pour créer un résumé détaillé avec Claude AI")
+                            .foregroundColor(.secondary)
+                            .italic()
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                }
+            }
+            .padding()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct StatCard: View {
+    let title: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.title)
+                .fontWeight(.bold)
+                .foregroundColor(color)
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(color.opacity(0.1))
+        .cornerRadius(8)
     }
 }
 

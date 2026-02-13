@@ -169,7 +169,22 @@ class JiraManager: ObservableObject {
             let sprintResponse = try JSONDecoder().decode(JiraSprintResponse.self, from: data)
 
             await MainActor.run {
-                self.sprints = sprintResponse.values.sorted { $0.id > $1.id }
+                // Trier les sprints: actifs d'abord, puis par date de début décroissante
+                self.sprints = sprintResponse.values.sorted { sprint1, sprint2 in
+                    // Priorité aux sprints actifs
+                    if sprint1.state == "active" && sprint2.state != "active" {
+                        return true
+                    }
+                    if sprint1.state != "active" && sprint2.state == "active" {
+                        return false
+                    }
+                    // Sinon, trier par date de début (plus récent en premier)
+                    if let date1 = sprint1.startDate, let date2 = sprint2.startDate {
+                        return date1 > date2
+                    }
+                    // Fallback sur l'ID si pas de dates
+                    return sprint1.id > sprint2.id
+                }
                 if selectedSprint == nil, let first = sprints.first(where: { $0.state == "active" }) {
                     selectedSprint = first
                 }
@@ -292,8 +307,8 @@ class JiraManager: ObservableObject {
         }
     }
 
-    // MARK: - Generate Summary with Claude
-    func generateSummary(for issue: JiraIssue) async {
+    // MARK: - Generate Sprint Review Summary with Claude
+    func generateSprintReview(for sprint: Sprint) async {
         guard !claudeAPIKey.isEmpty else {
             await MainActor.run {
                 errorMessage = "Claude API key not configured"
@@ -301,15 +316,41 @@ class JiraManager: ObservableObject {
             return
         }
 
+        // Calculer les statistiques du sprint
+        let totalIssues = issues.count
+        let doneIssues = issues.filter { $0.status.lowercased().contains("done") || $0.status.lowercased().contains("terminé") || $0.status.lowercased().contains("closed") }
+        let inProgressIssues = issues.filter { $0.status.lowercased().contains("progress") || $0.status.lowercased().contains("cours") }
+        let todoIssues = issues.filter { !$0.status.lowercased().contains("done") && !$0.status.lowercased().contains("progress") && !$0.status.lowercased().contains("terminé") && !$0.status.lowercased().contains("cours") && !$0.status.lowercased().contains("closed") }
+
+        // Grouper par type
+        let issuesByType = Dictionary(grouping: issues) { $0.issueType }
+        let doneByType = Dictionary(grouping: doneIssues) { $0.issueType }
+
+        let issuesDescription = issues.map { "- [\($0.key)] \($0.summary) - Status: \($0.status)" }.joined(separator: "\n")
+
         let prompt = """
-        Génère un résumé concis et clair de ce ticket Jira en français:
+        Génère un résumé de Sprint Review en français pour ce sprint Jira:
 
-        Titre: \(issue.summary)
-        Type: \(issue.issueType)
-        Status: \(issue.status)
-        Description: \(issue.description ?? "Aucune description")
+        Sprint: \(sprint.name)
+        Goal: \(sprint.goal ?? "Aucun objectif défini")
 
-        Le résumé doit être en 2-3 phrases maximum et mettre en évidence les points clés.
+        Statistiques:
+        - Total tickets: \(totalIssues)
+        - Tickets Done: \(doneIssues.count) (\(totalIssues > 0 ? Int((Double(doneIssues.count) / Double(totalIssues)) * 100) : 0)%)
+        - En cours: \(inProgressIssues.count)
+        - À faire: \(todoIssues.count)
+
+        Types de tickets:
+        \(issuesByType.map { type, tickets in "- \(type): \(tickets.count) total, \(doneByType[type]?.count ?? 0) done" }.joined(separator: "\n"))
+
+        Liste des tickets:
+        \(issuesDescription)
+
+        Génère un résumé structuré pour une sprint review avec:
+        1. Vue d'ensemble (objectifs atteints, progression)
+        2. Points positifs (ce qui a bien fonctionné)
+        3. Points d'attention (ce qui reste à faire, blocages éventuels)
+        4. Recommandations pour le prochain sprint
         """
 
         let url = URL(string: "https://api.anthropic.com/v1/messages")!
@@ -321,7 +362,7 @@ class JiraManager: ObservableObject {
 
         let body: [String: Any] = [
             "model": "claude-3-5-sonnet-20241022",
-            "max_tokens": 300,
+            "max_tokens": 1500,
             "messages": [
                 [
                     "role": "user",
@@ -340,19 +381,19 @@ class JiraManager: ObservableObject {
                let text = content.first?["text"] as? String {
 
                 let summary = IssueSummary(
-                    id: issue.id,
-                    issueKey: issue.key,
+                    id: "\(sprint.id)",
+                    issueKey: "SPRINT-\(sprint.id)",
                     summary: text,
                     generatedAt: Date()
                 )
 
                 await MainActor.run {
-                    self.summaries[issue.key] = summary
+                    self.summaries["SPRINT-\(sprint.id)"] = summary
                 }
             }
         } catch {
             await MainActor.run {
-                self.errorMessage = "Failed to generate summary: \(error.localizedDescription)"
+                self.errorMessage = "Failed to generate sprint review: \(error.localizedDescription)"
             }
         }
     }
