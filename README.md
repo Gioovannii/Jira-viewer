@@ -5,161 +5,130 @@
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-Native-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-Application macOS native pour visualiser vos tickets Jira avec génération de résumés par IA.
+Application macOS native pour visualiser vos tickets Jira et générer des Sprint Reviews avec IA.
 
 ## 🎯 Aperçu
 
 Une application SwiftUI moderne qui se connecte à votre instance Jira pour:
 - 📊 Visualiser vos tickets par sprint
-- 🤖 Générer des résumés intelligents avec Claude AI
+- 📈 Générer des Sprint Reviews avec statistiques détaillées
+- 🤖 Résumés intelligents avec Claude AI pour vos sprint reviews
 - ⚡️ Interface native rapide et fluide
-- 🔐 Support Jira Server et Cloud
+- 🔐 Authentification sécurisée avec Personal Access Token
 
-## Fonctionnalités
+## ✨ Fonctionnalités
 
-- **Vue par Sprint**: Naviguez facilement entre vos sprints (actifs, futurs, terminés)
-- **Liste de tickets**: Affichage clair des tickets avec priorité, status, et assignation
-- **Résumés IA**: Génération automatique de résumés concis avec l'API Claude
-- **Interface native**: Application SwiftUI moderne et performante
-- **Support Jira Server**: Compatible avec votre instance Jira interne
+### Vue par Sprint
+- Navigation entre sprints (actifs, futurs, terminés)
+- Tri intelligent: sprints actifs en premier, puis par date
+- Dates formatées en français (dd/MM/yyyy)
 
-## 🚀 Installation rapide
+### Sprint Review avec IA
+- **Statistiques complètes du sprint**:
+  - Nombre total de tickets
+  - Tickets Done avec pourcentage de complétion
+  - Tickets en cours et à faire
+  - Répartition par type de ticket
+  - Barre de progression visuelle
 
-### Pour les utilisateurs (PO, EM, etc.)
+- **Résumé IA généré par Claude**:
+  - Vue d'ensemble des objectifs atteints
+  - Points positifs du sprint
+  - Points d'attention et blocages
+  - Recommandations pour le prochain sprint
 
-**📥 [Télécharger Jira Viewer](https://github.com/Gioovannii/Jira-viewer/releases/latest)**
+### Liste de tickets
+- Affichage clair avec priorité, status, et assignation
+- Détails complets de chaque ticket
+- Lien direct vers Jira
 
-Voir le guide d'installation en 3 étapes: [INSTALLATION_RAPIDE.md](INSTALLATION_RAPIDE.md)
-
-**En bref:**
-1. Téléchargez le `.dmg`
-2. Glissez dans Applications
-3. Configurez vos credentials Jira dans Settings
-
-### Pour les développeurs
-
-```bash
-# Cloner le repository
-git clone https://github.com/Gioovannii/Jira-viewer.git
-cd Jira-viewer
-
-# Ouvrir dans Xcode
-open JiraViewer.xcodeproj
-
-# Build et Run
-# Appuyez sur Cmd+R dans Xcode
-```
-
-Voir [SETUP.md](SETUP.md) pour des instructions détaillées de développement.
-
-## ⚙️ Configuration
+## 🚀 Installation
 
 ### Prérequis
 
 - macOS 13.0 (Ventura) ou supérieur
-- Xcode 15.0 ou supérieur
 - Accès à votre instance Jira
-- Clé API Claude (optionnel, pour les résumés IA)
+- Personal Access Token Jira
+- Clé API Claude (pour les résumés IA)
 
-### 🛠 Compilation (Développeurs)
+### Configuration
 
-Le projet Xcode est déjà configuré et prêt à l'emploi.
-
+1. **Cloner et compiler**:
 ```bash
-# Ouvrir le projet
+git clone https://github.com/Gioovannii/Jira-viewer.git
+cd Jira-viewer
 open JiraViewer.xcodeproj
-
-# Ou compiler en ligne de commande
-xcodebuild -project JiraViewer.xcodeproj \
-  -scheme JiraViewer \
-  -configuration Release \
-  build
+# Build et Run avec Cmd+R
 ```
 
-L'application sera dans `build/Build/Products/Release/JiraViewer.app`
+2. **Créer un Personal Access Token Jira**:
+   - Connectez-vous à Jira
+   - Allez dans Profile > Personal Access Tokens
+   - Créez un nouveau token
+   - Copiez le token (vous ne pourrez plus le voir après!)
 
-### 🔑 Configuration de l'application
-
-1. Lancez l'application
-2. Allez dans Settings (Cmd+,)
-3. Configurez:
-   - **URL Jira**: `https://jira.ets.mpi-internal.com`
-   - **Nom d'utilisateur**: Votre username Jira
-   - **Token/Mot de passe**: Votre mot de passe Jira
-   - **Clé du projet**: `LBCMONSPE`
-   - **Clé API Claude**: Votre clé API depuis https://console.anthropic.com/
+3. **Configurer l'application**:
+   - Lancez l'app
+   - Allez dans Settings (Cmd+,)
+   - Collez votre Personal Access Token
+   - (Optionnel) Ajoutez votre clé API Claude pour les résumés IA
 
 ## 📖 Utilisation
 
-1. **Navigation par Sprint**:
-   - La barre latérale gauche affiche tous vos sprints
-   - Cliquez sur un sprint pour voir ses tickets
-   - Les sprints actifs sont mis en évidence
+### Sprint Review
+1. Sélectionnez un sprint dans la liste de gauche
+2. Cliquez sur le bouton "Sprint Review" (icône graphique) dans la barre d'outils
+3. Consultez les statistiques du sprint
+4. Cliquez sur "Générer Sprint Review" pour obtenir un résumé IA détaillé
 
-2. **Liste des tickets**:
-   - La colonne centrale affiche tous les tickets du sprint sélectionné
-   - Codes couleur pour les priorités
-   - Filtrage automatique par sprint
-
-3. **Détails et résumé**:
-   - Cliquez sur un ticket pour voir les détails
-   - Cliquez sur "Générer" pour créer un résumé IA
-   - Le résumé est généré en français et met en évidence les points clés
-
-4. **Ouvrir dans Jira**:
-   - Bouton "Ouvrir dans Jira" pour accéder au ticket complet dans votre navigateur
+### Navigation des tickets
+1. Les sprints apparaissent dans la barre latérale gauche
+2. Cliquez sur un sprint pour voir ses tickets
+3. Cliquez sur un ticket pour voir les détails
+4. Utilisez "Ouvrir dans Jira" pour accéder au ticket complet
 
 ## 🏗 Architecture
 
 ```
 JiraViewer/
-├── JiraViewerApp.swift          # Point d'entrée de l'app
+├── JiraViewerApp.swift          # Point d'entrée
 ├── Models/
-│   └── JiraModels.swift         # Modèles de données Jira
+│   └── JiraModels.swift         # Modèles de données
 ├── Services/
-│   └── JiraManager.swift        # Logique API Jira et Claude
+│   └── JiraManager.swift        # API Jira et Claude
 └── Views/
-    ├── ContentView.swift        # Vue principale
+    ├── ContentView.swift        # Vue principale avec Sprint Review
     └── SettingsView.swift       # Configuration
 ```
 
 ## 🔌 API utilisées
 
-- **Jira REST API v2**: Pour les tickets et sprints
-- **Jira Agile API v1.0**: Pour les boards et sprints
-- **Claude API**: Pour la génération de résumés IA
+- **Jira REST API v2**: Tickets et recherche
+- **Jira Agile API v1.0**: Boards et sprints
+- **Claude API**: Génération de Sprint Reviews IA
 
 ## 🔒 Sécurité
 
-- Les credentials sont stockés dans UserDefaults (pour développement)
-- Pour la production, envisagez d'utiliser le Keychain
-- L'app utilise HTTPS pour toutes les communications
-- Support du sandbox macOS activé
-
-## 🚧 Améliorations futures
-
-- [ ] Cache des tickets et synchronisation en arrière-plan
-- [ ] Génération de résumés par batch pour tout un sprint
-- [ ] Export des résumés en markdown
-- [ ] Notifications pour les nouveaux tickets
-- [ ] Support des filtres personnalisés
-- [ ] Dark mode automatique
-- [ ] Stockage sécurisé dans le Keychain
+- Authentification via Personal Access Token
+- Bearer token pour toutes les requêtes API
+- Credentials stockés dans UserDefaults (envisager Keychain pour production)
+- Communication HTTPS uniquement
+- Support du sandbox macOS
 
 ## 🤝 Contribution
 
-Les contributions sont les bienvenues! Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les guidelines.
+Les contributions sont les bienvenues!
 
 ## 📝 License
 
-Ce projet est sous licence MIT. Voir [LICENSE](LICENSE) pour plus de détails.
+MIT License - voir [LICENSE](LICENSE)
 
 ## 💬 Support
 
-- 🐛 Pour les bugs: Ouvrez une [issue](https://github.com/Gioovannii/Jira-viewer/issues)
-- 📚 Documentation Jira API: https://developer.atlassian.com/server/jira/platform/rest-apis/
-- 🤖 Documentation Claude API: https://docs.anthropic.com/
+- 🐛 Bugs: [Issues GitHub](https://github.com/Gioovannii/Jira-viewer/issues)
+- 📚 [Jira API Documentation](https://developer.atlassian.com/server/jira/platform/rest-apis/)
+- 🤖 [Claude API Documentation](https://docs.anthropic.com/)
 
-## ⭐️ Remerciements
+---
 
-Développé avec ❤️ en utilisant SwiftUI et l'API Claude d'Anthropic.
+Développé avec ❤️ en SwiftUI et Claude AI
