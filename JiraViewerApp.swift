@@ -1,13 +1,21 @@
+//
+//  JiraViewerApp.swift
+//  JiraViewer
+//
+//  Copyright © 2024-2026 Jonathan Gaffe. All rights reserved.
+//  Licensed under the MIT License.
+//
+
 import SwiftUI
 
 @main
 struct JiraViewerApp: App {
-    @StateObject private var jiraManager = JiraManager()
+    // Initialize the DIContainer at startup
+    private let container = DIContainer.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(jiraManager)
                 .frame(minWidth: 1000, minHeight: 600)
         }
         .commands {
