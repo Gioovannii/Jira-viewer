@@ -32,6 +32,12 @@ struct SprintReview: Identifiable, Hashable {
     // Insights
     let cycleTimeMetrics: CycleTimeMetrics?
 
+    // Blocked issues
+    let blockedIssuesMetrics: BlockedIssuesMetrics?
+
+    // Status flow
+    let statusFlowMetrics: StatusFlowMetrics?
+
     // Generated text
     let summaryText: String
 
@@ -49,6 +55,8 @@ struct SprintReview: Identifiable, Hashable {
         doneByType: [String: Int],
         timeMetrics: TimeMetrics? = nil,
         cycleTimeMetrics: CycleTimeMetrics? = nil,
+        blockedIssuesMetrics: BlockedIssuesMetrics? = nil,
+        statusFlowMetrics: StatusFlowMetrics? = nil,
         summaryText: String
     ) {
         self.id = id
@@ -64,6 +72,8 @@ struct SprintReview: Identifiable, Hashable {
         self.doneByType = doneByType
         self.timeMetrics = timeMetrics
         self.cycleTimeMetrics = cycleTimeMetrics
+        self.blockedIssuesMetrics = blockedIssuesMetrics
+        self.statusFlowMetrics = statusFlowMetrics
         self.summaryText = summaryText
     }
 }
@@ -102,5 +112,47 @@ extension SprintReview {
         let analyzedTicketsCount: Int
         let longestTicketKey: String
         let longestTicketDays: Double
+    }
+
+    /// Blocked issues metrics
+    struct BlockedIssuesMetrics: Hashable {
+        let blockedCount: Int
+        let flaggedCount: Int
+        let stagnantCount: Int
+        let averageBlockedDays: Double
+        let bottleneckStatus: String?
+    }
+
+    /// Status flow metrics - Time spent in each status/column
+    struct StatusFlowMetrics: Hashable {
+        let statusAverageDays: [String: Double]  // Average days per status
+        let statusTicketCount: [String: Int]      // Number of tickets that went through each status
+        let totalTicketsAnalyzed: Int
+        let ticketDetails: [TicketStatusDetail]   // Detailed breakdown per ticket
+    }
+
+    /// Detail of time spent by a specific ticket in work statuses
+    struct TicketStatusDetail: Hashable, Identifiable {
+        let id: String  // ticket key
+        let key: String
+        let summary: String
+        let timeInProgress: Double?      // Days in "In Progress"
+        let timeInReview: Double?        // Days in "Review"
+        let timeInTest: Double?          // Days in "Test"
+        let currentStatus: String
+        let isStuck: Bool                // True if spent > 3 days in any work status
+
+        var totalWorkDays: Double {
+            (timeInProgress ?? 0) + (timeInReview ?? 0) + (timeInTest ?? 0)
+        }
+
+        var slowestPhase: String? {
+            let phases: [(String, Double)] = [
+                ("In Progress", timeInProgress ?? 0),
+                ("Review", timeInReview ?? 0),
+                ("Test", timeInTest ?? 0)
+            ]
+            return phases.max(by: { $0.1 < $1.1 })?.0
+        }
     }
 }

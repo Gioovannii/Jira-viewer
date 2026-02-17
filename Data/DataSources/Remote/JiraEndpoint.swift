@@ -12,7 +12,7 @@ import Foundation
 enum JiraEndpoint {
     case boards(projectKey: String)
     case sprints(boardId: Int)
-    case searchIssues(jql: String, maxResults: Int, fields: [String])
+    case searchIssues(jql: String, maxResults: Int, fields: [String], expand: [String]?)
 
     /// Builds the relative path for the endpoint
     func path(baseURL: String) -> String {
@@ -45,12 +45,16 @@ enum JiraEndpoint {
         case .sprints:
             // No query params
             break
-        case .searchIssues(let jql, let maxResults, let fields):
-            components.queryItems = [
+        case .searchIssues(let jql, let maxResults, let fields, let expand):
+            var queryItems = [
                 URLQueryItem(name: "jql", value: jql),
                 URLQueryItem(name: "maxResults", value: "\(maxResults)"),
                 URLQueryItem(name: "fields", value: fields.joined(separator: ","))
             ]
+            if let expand = expand, !expand.isEmpty {
+                queryItems.append(URLQueryItem(name: "expand", value: expand.joined(separator: ",")))
+            }
+            components.queryItems = queryItems
         }
 
         return components.url

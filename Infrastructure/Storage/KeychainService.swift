@@ -32,7 +32,8 @@ final class KeychainService: SecureStorageProtocol {
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+            kSecAttrAccessible as String: kSecAttrAccessibleAlways,  // No password prompt
+            kSecAttrSynchronizable as String: false  // Don't sync via iCloud
         ]
 
         let status = SecItemAdd(query as CFDictionary, nil)

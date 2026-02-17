@@ -23,6 +23,10 @@ protocol ConfigRepositoryProtocol {
     func getProjectKey() -> String
     func setProjectKey(_ key: String)
 
+    /// Flagged custom field ID
+    func getFlaggedCustomFieldId() -> String
+    func setFlaggedCustomFieldId(_ fieldId: String)
+
     /// Checks if the configuration is complete
     var isConfigured: Bool { get }
 }

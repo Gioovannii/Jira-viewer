@@ -56,6 +56,54 @@ final class IssueDetailViewModel: ObservableObject {
         return DateFormatter.formatForDisplay(date)
     }
 
+    /// Status history formatted for timeline display
+    var statusHistory: [(status: String, duration: String, date: String)] {
+        guard let history = issue.history else { return [] }
+
+        let transitions = history.transitions.sorted { $0.transitionDate < $1.transitionDate }
+        var result: [(status: String, duration: String, date: String)] = []
+
+        for (index, transition) in transitions.enumerated() {
+            let nextTransition = index + 1 < transitions.count ? transitions[index + 1] : nil
+            let duration: TimeInterval
+
+            if let next = nextTransition {
+                duration = next.transitionDate.timeIntervalSince(transition.transitionDate)
+            } else {
+                // Current status (still ongoing)
+                duration = Date().timeIntervalSince(transition.transitionDate)
+            }
+
+            let durationDays = duration / 86400.0
+            let durationFormatted = String(format: "%.1f days", durationDays)
+            let dateFormatted = DateFormatter.formatForDisplay(transition.transitionDate) ?? ""
+
+            result.append((
+                status: transition.toStatus,
+                duration: durationFormatted,
+                date: dateFormatted
+            ))
+        }
+
+        return result
+    }
+
+    /// Blockage information string
+    var blockageInfo: String? {
+        guard issue.isBlocked else { return nil }
+
+        if issue.isFlagged {
+            if let days = issue.daysInCurrentStatus {
+                return "Flagged as blocked for \(String(format: "%.1f", days)) days"
+            }
+            return "Flagged as blocked"
+        } else if let days = issue.daysInCurrentStatus {
+            return "Stagnant for \(String(format: "%.1f", days)) days"
+        }
+
+        return "Blocked"
+    }
+
     // MARK: - Actions
 
     /// Opens the issue in Jira browser

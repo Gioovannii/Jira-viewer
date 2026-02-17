@@ -58,6 +58,16 @@ final class ConfigRepository: ConfigRepositoryProtocol {
         userDefaultsStorage.setProjectKey(key)
     }
 
+    // MARK: - Flagged Custom Field ID
+
+    func getFlaggedCustomFieldId() -> String {
+        userDefaultsStorage.getFlaggedCustomFieldId()
+    }
+
+    func setFlaggedCustomFieldId(_ fieldId: String) {
+        userDefaultsStorage.setFlaggedCustomFieldId(fieldId)
+    }
+
     // MARK: - Configuration Status
 
     var isConfigured: Bool {

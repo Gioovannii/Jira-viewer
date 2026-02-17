@@ -23,6 +23,58 @@ struct IssueDetailView: View {
                 // Details
                 detailsSection
 
+                // Blockage Warning
+                if viewModel.issue.isBlocked {
+                    Divider()
+
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(viewModel.blockageInfo ?? "Blocked")
+                            .foregroundColor(.red)
+                            .fontWeight(.semibold)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                }
+
+                // Status History Timeline
+                if let history = viewModel.issue.history, !history.transitions.isEmpty {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Status History")
+                            .font(.headline)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(viewModel.statusHistory, id: \.status) { item in
+                                HStack(alignment: .top, spacing: 12) {
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 8, height: 8)
+                                        .padding(.top, 6)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(item.status)
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                        Text(item.duration)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Text(item.date)
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Description
                 if let description = viewModel.issue.description, !description.isEmpty {
                     Divider()

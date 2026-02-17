@@ -20,7 +20,9 @@ final class DIContainer {
     }()
 
     private lazy var _secureStorage: SecureStorageProtocol = {
-        KeychainService()
+        // Use SimpleSecureStorage to avoid password prompts
+        // For production, switch back to KeychainService()
+        SimpleSecureStorage()
     }()
 
     private lazy var _userDefaultsStorage: UserDefaultsStorage = {

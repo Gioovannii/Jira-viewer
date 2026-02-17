@@ -22,13 +22,19 @@ struct IssueListView: View {
                 Text("No tickets found")
                     .foregroundColor(.secondary)
             } else {
-                List(viewModel.issues, selection: $selectedIssue) { issue in
-                    IssueRow(issue: issue)
-                        .tag(issue)
+                VStack(spacing: 0) {
+                    Toggle("Show only blocked issues", isOn: $viewModel.showOnlyBlocked)
+                        .toggleStyle(.switch)
+                        .padding()
+
+                    List(viewModel.filteredIssues, selection: $selectedIssue) { issue in
+                        IssueRow(issue: issue)
+                            .tag(issue)
+                    }
                 }
             }
         }
-        .navigationTitle("Issues (\(viewModel.issues.count))")
+        .navigationTitle("Issues (\(viewModel.filteredIssues.count))")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {

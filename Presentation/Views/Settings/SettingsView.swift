@@ -99,6 +99,30 @@ struct SettingsView: View {
                 .padding(.vertical, 8)
             }
 
+            Section("Advanced") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Flagged Field ID")
+                        .font(.headline)
+
+                    Text("Custom field ID for flagged/blocked issues. Default is customfield_10021.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Flagged Field ID", text: $viewModel.flaggedFieldId)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+                        .onChange(of: viewModel.flaggedFieldId) { _ in
+                            viewModel.saveFlaggedFieldId()
+                        }
+
+                    Text("This varies by Jira instance. Check your Jira field configuration if blocked issues are not detected correctly.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .italic()
+                }
+                .padding(.vertical, 8)
+            }
+
             Section("Security") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {

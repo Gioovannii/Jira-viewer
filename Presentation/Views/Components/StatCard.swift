@@ -12,7 +12,15 @@ import SwiftUI
 struct StatCard: View {
     let title: String
     let value: String
+    let subtitle: String?
     let color: Color
+
+    init(title: String, value: String, subtitle: String? = nil, color: Color) {
+        self.title = title
+        self.value = value
+        self.subtitle = subtitle
+        self.color = color
+    }
 
     var body: some View {
         VStack(spacing: 4) {
@@ -23,6 +31,11 @@ struct StatCard: View {
             Text(title)
                 .font(.caption)
                 .foregroundColor(.secondary)
+            if let subtitle = subtitle {
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding()

@@ -39,14 +39,31 @@ final class IssueRepository: IssueRepositoryProtocol {
             "updated",
             "resolutiondate",
             "customfield_10020", // Sprint
+            "customfield_10021", // Flagged
             "timetracking"
         ]
 
-        // 3. Execute the request
-        let endpoint = JiraEndpoint.searchIssues(jql: jql, maxResults: 100, fields: fields)
+        // 3. Execute the request (with changelog expansion)
+        let endpoint = JiraEndpoint.searchIssues(
+            jql: jql,
+            maxResults: 100,
+            fields: fields,
+            expand: ["changelog"]
+        )
         let response: JiraSearchResponseDTO = try await apiClient.request(endpoint)
 
         // 4. Map DTOs to domain entities
-        return IssueMapper.toDomain(response.issues)
+        let issues = IssueMapper.toDomain(response.issues)
+
+        // Debug: Summary
+        let blockedCount = issues.filter { $0.isBlocked }.count
+        let withHistoryCount = issues.filter { $0.history != nil && !$0.history!.transitions.isEmpty }.count
+        print("📊 [DEBUG] ===== SUMMARY =====")
+        print("📊 [DEBUG] Fetched: \(issues.count) issues")
+        print("📊 [DEBUG] With status transitions: \(withHistoryCount)")
+        print("🚫 [DEBUG] Blocked issues detected: \(blockedCount)")
+        print("📊 [DEBUG] ==================")
+
+        return issues
     }
 }

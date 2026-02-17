@@ -17,6 +17,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var jiraBaseURL: String = ""
     @Published var jiraToken: String = ""
     @Published var projectKey: String = ""
+    @Published var flaggedFieldId: String = ""
     @Published var errorMessage: String?
     @Published var successMessage: String?
 
@@ -52,6 +53,7 @@ final class SettingsViewModel: ObservableObject {
         jiraBaseURL = configRepository.getJiraBaseURL()
         jiraToken = configRepository.getJiraToken() ?? ""
         projectKey = configRepository.getProjectKey()
+        flaggedFieldId = configRepository.getFlaggedCustomFieldId()
     }
 
     /// Saves the configuration
@@ -87,6 +89,11 @@ final class SettingsViewModel: ObservableObject {
         } catch {
             errorMessage = "Failed to delete token: \(error.localizedDescription)"
         }
+    }
+
+    /// Saves the flagged field ID
+    func saveFlaggedFieldId() {
+        configRepository.setFlaggedCustomFieldId(flaggedFieldId)
     }
 
     /// Clears the messages

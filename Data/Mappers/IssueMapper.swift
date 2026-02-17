@@ -21,6 +21,8 @@ struct IssueMapper {
         let resolved = resolveDate(dto: dto, updated: updated, status: status)
         let sprint = dto.fields.sprint.map { SprintMapper.toDomain($0) }
         let timeTracking = dto.fields.timetracking.map { mapTimeTracking($0) }
+        let history = dto.changelog.map { IssueHistoryMapper.map(changelogDTO: $0) }
+        let isFlagged = extractFlaggedStatus(dto: dto)
 
         return Issue(
             id: dto.id,
@@ -35,7 +37,9 @@ struct IssueMapper {
             updated: updated,
             resolved: resolved,
             sprint: sprint,
-            timeTracking: timeTracking
+            timeTracking: timeTracking,
+            history: history,
+            isFlagged: isFlagged
         )
     }
 
@@ -91,5 +95,18 @@ struct IssueMapper {
         }
 
         return nil
+    }
+
+    /// Extract flagged status from custom field
+    private static func extractFlaggedStatus(dto: JiraIssueDTO) -> Bool {
+        guard let flaggedField = dto.fields.customfield_10021,
+              !flaggedField.isEmpty else {
+            return false
+        }
+        // Check if any flagged value indicates "Impediment" or similar
+        return flaggedField.contains { item in
+            let value = item.value.lowercased()
+            return value.contains("impediment") || value.contains("blocked")
+        }
     }
 }

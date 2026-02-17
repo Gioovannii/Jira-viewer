@@ -21,6 +21,7 @@ final class UserDefaultsStorage {
     private enum Keys {
         static let jiraBaseURL = "jiraBaseURL"
         static let projectKey = "projectKey"
+        static let flaggedCustomFieldId = "flaggedCustomFieldId"
     }
 
     // MARK: - Jira Base URL
@@ -41,5 +42,15 @@ final class UserDefaultsStorage {
 
     func setProjectKey(_ key: String) {
         defaults.set(key, forKey: Keys.projectKey)
+    }
+
+    // MARK: - Flagged Custom Field ID
+
+    func getFlaggedCustomFieldId() -> String {
+        defaults.string(forKey: Keys.flaggedCustomFieldId) ?? "customfield_10021"
+    }
+
+    func setFlaggedCustomFieldId(_ fieldId: String) {
+        defaults.set(fieldId, forKey: Keys.flaggedCustomFieldId)
     }
 }

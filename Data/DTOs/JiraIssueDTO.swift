@@ -13,6 +13,7 @@ struct JiraIssueDTO: Codable, Hashable {
     let id: String
     let key: String
     let fields: IssueFieldsDTO
+    let changelog: JiraChangelogDTO?
 
     struct IssueFieldsDTO: Codable, Hashable {
         let summary: String
@@ -26,12 +27,18 @@ struct JiraIssueDTO: Codable, Hashable {
         let resolutiondate: String?
         let sprint: JiraSprintDTO?
         let timetracking: TimeTrackingDTO?
+        let customfield_10021: [FlaggedFieldDTO]?
 
         enum CodingKeys: String, CodingKey {
             case summary, description, status, assignee, priority, issuetype
             case created, updated, resolutiondate, timetracking
             case sprint = "customfield_10020" // Jira custom field for sprint
+            case customfield_10021 // Jira custom field for flagged status
         }
+    }
+
+    struct FlaggedFieldDTO: Codable, Hashable {
+        let value: String
     }
 
     struct IssueStatusDTO: Codable, Hashable {

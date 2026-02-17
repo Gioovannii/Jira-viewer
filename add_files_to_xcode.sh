@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Script pour ajouter les nouveaux fichiers à Xcode
+# Ce script doit être exécuté depuis le dossier du projet
+
+echo "🔧 Ajout des fichiers au projet Xcode..."
+echo ""
+echo "⚠️  IMPORTANT: Vous devez maintenant faire ceci MANUELLEMENT dans Xcode:"
+echo ""
+echo "1. Ouvrez JiraViewer.xcodeproj dans Xcode"
+echo ""
+echo "2. Dans le Project Navigator (panneau gauche), GLISSEZ-DÉPOSEZ ces dossiers:"
+echo "   📁 Domain/"
+echo "   📁 Data/"
+echo "   📁 Infrastructure/"
+echo "   📁 Presentation/"
+echo ""
+echo "3. Dans la popup qui apparaît, assurez-vous que:"
+echo "   ✅ 'Create groups' est coché"
+echo "   ✅ 'Add to targets: JiraViewer' est coché"
+echo "   ✅ 'Copy items if needed' est DÉCOCHÉ"
+echo ""
+echo "4. Pour les Tests, glissez-déposez:"
+echo "   📁 Tests/"
+echo "   Et cochez le target 'JiraViewerTests' (si vous avez créé ce target)"
+echo ""
+echo "5. Ensuite:"
+echo "   - Product → Clean Build Folder (Cmd+Shift+K)"
+echo "   - Product → Build (Cmd+B)"
+echo ""
+echo "✨ Les fichiers seront alors visibles et compilables dans Xcode!"

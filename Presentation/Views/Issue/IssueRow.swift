@@ -44,6 +44,12 @@ struct IssueRow: View {
 
                 Spacer()
 
+                if issue.isBlocked {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                        .help(issue.isFlagged ? "Flagged as blocked" : "Stagnant for \(String(format: "%.1f", issue.daysInCurrentStatus ?? 0)) days")
+                }
+
                 if let priority = issue.priority {
                     Circle()
                         .fill(priorityColor)

@@ -18,6 +18,7 @@ final class IssueListViewModel: ObservableObject {
     @Published var selectedIssue: Issue?
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var showOnlyBlocked = false
 
     // MARK: - Dependencies
 
@@ -27,6 +28,16 @@ final class IssueListViewModel: ObservableObject {
 
     init(fetchIssuesUseCase: FetchIssuesUseCase) {
         self.fetchIssuesUseCase = fetchIssuesUseCase
+    }
+
+    // MARK: - Computed Properties
+
+    /// Filtered issues based on showOnlyBlocked flag
+    var filteredIssues: [Issue] {
+        if showOnlyBlocked {
+            return issues.filter { $0.isBlocked }
+        }
+        return issues
     }
 
     // MARK: - Public Methods

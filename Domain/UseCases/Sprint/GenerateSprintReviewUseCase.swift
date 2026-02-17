@@ -35,7 +35,13 @@ final class GenerateSprintReviewUseCase {
         // 4. Calculate cycle time metrics
         let cycleTimeMetrics = calculateCycleTimeMetrics(doneIssues: doneIssues)
 
-        // 5. Generate summary text
+        // 5. Calculate blocked issues metrics
+        let blockedIssuesMetrics = calculateBlockedMetrics(issues: issues)
+
+        // 6. Calculate status flow metrics
+        let statusFlowMetrics = calculateStatusFlowMetrics(issues: issues)
+
+        // 7. Generate summary text
         let summaryText = generateSummaryText(
             sprint: sprint,
             totalIssues: totalIssues,
@@ -61,6 +67,8 @@ final class GenerateSprintReviewUseCase {
             doneByType: doneByType,
             timeMetrics: timeMetrics,
             cycleTimeMetrics: cycleTimeMetrics,
+            blockedIssuesMetrics: blockedIssuesMetrics,
+            statusFlowMetrics: statusFlowMetrics,
             summaryText: summaryText
         )
     }
@@ -247,5 +255,182 @@ final class GenerateSprintReviewUseCase {
         text += "    possible improvements"
 
         return text
+    }
+
+    private func calculateBlockedMetrics(issues: [Issue]) -> SprintReview.BlockedIssuesMetrics? {
+        let flaggedIssues = issues.filter { $0.isFlagged }
+        let stagnantIssues = issues.filter { !$0.isFlagged && ($0.daysInCurrentStatus ?? 0) >= 3 }
+        let blockedIssues = issues.filter { $0.isBlocked }
+
+        guard !blockedIssues.isEmpty else { return nil }
+
+        let totalDays = blockedIssues.compactMap { $0.daysInCurrentStatus }.reduce(0, +)
+        let averageDays = totalDays / Double(blockedIssues.count)
+
+        // Find bottleneck status (status with longest average time across all issues)
+        let bottleneck = findBottleneckStatus(issues: issues)
+
+        return SprintReview.BlockedIssuesMetrics(
+            blockedCount: blockedIssues.count,
+            flaggedCount: flaggedIssues.count,
+            stagnantCount: stagnantIssues.count,
+            averageBlockedDays: averageDays,
+            bottleneckStatus: bottleneck
+        )
+    }
+
+    private func findBottleneckStatus(issues: [Issue]) -> String? {
+        var statusTimes: [String: [TimeInterval]] = [:]
+
+        // Aggregate all status durations across all issues
+        for issue in issues {
+            let durations = issue.statusDurations
+            for (status, duration) in durations {
+                statusTimes[status, default: []].append(duration)
+            }
+        }
+
+        // Calculate average time per status
+        let statusAverages = statusTimes.mapValues { times in
+            times.reduce(0, +) / Double(times.count)
+        }
+
+        // Find the status with the highest average time (minimum 2 days)
+        guard let bottleneck = statusAverages.max(by: { $0.value < $1.value }),
+              bottleneck.value >= 172800 else { // 2 days in seconds
+            return nil
+        }
+
+        return bottleneck.key
+    }
+
+    private func calculateStatusFlowMetrics(issues: [Issue]) -> SprintReview.StatusFlowMetrics? {
+        var statusTimes: [String: [TimeInterval]] = [:]
+        var ticketDetails: [SprintReview.TicketStatusDetail] = []
+
+        // Process each ticket
+        for issue in issues {
+            // Extract time in work statuses
+            let timeInProgress = extractTimeInStatus(issue: issue, statusNames: ["in progress", "en cours", "wip"])
+            let timeInReview = extractTimeInStatus(issue: issue, statusNames: ["review", "to review", "à réviser", "révision", "code review"])
+            let timeInTest = extractTimeInStatus(issue: issue, statusNames: ["test", "testing", "in test", "en test", "qa"])
+
+            // Check if stuck (> 3 days in any work status)
+            let isStuck = (timeInProgress ?? 0) > 3 || (timeInReview ?? 0) > 3 || (timeInTest ?? 0) > 3
+
+            // Create ticket detail
+            let detail = SprintReview.TicketStatusDetail(
+                id: issue.key,
+                key: issue.key,
+                summary: issue.summary,
+                timeInProgress: timeInProgress,
+                timeInReview: timeInReview,
+                timeInTest: timeInTest,
+                currentStatus: issue.status.name,
+                isStuck: isStuck
+            )
+            ticketDetails.append(detail)
+
+            // Aggregate for averages
+            if let time = timeInProgress {
+                statusTimes["In Progress", default: []].append(time * 86400) // Convert days to seconds
+            }
+            if let time = timeInReview {
+                statusTimes["Review", default: []].append(time * 86400)
+            }
+            if let time = timeInTest {
+                statusTimes["Test", default: []].append(time * 86400)
+            }
+        }
+
+        guard !statusTimes.isEmpty else { return nil }
+
+        // Calculate averages in days
+        let statusAverageDays = statusTimes.mapValues { times in
+            let avgSeconds = times.reduce(0, +) / Double(times.count)
+            return avgSeconds / 86400.0  // Convert to days
+        }
+
+        let statusTicketCount = statusTimes.mapValues { $0.count }
+
+        return SprintReview.StatusFlowMetrics(
+            statusAverageDays: statusAverageDays,
+            statusTicketCount: statusTicketCount,
+            totalTicketsAnalyzed: issues.count,
+            ticketDetails: ticketDetails
+        )
+    }
+
+    private func extractTimeInStatus(issue: Issue, statusNames: [String]) -> Double? {
+        print("📊 [DEBUG] Extracting time for \(issue.key) in statuses: \(statusNames)")
+        print("📊 [DEBUG] Current status: \(issue.status.name)")
+
+        // Try to get from history first
+        if let history = issue.history, !history.transitions.isEmpty {
+            print("📊 [DEBUG] History available with \(history.transitions.count) transitions")
+            for statusName in statusNames {
+                if let time = history.timeInStatus(statusName) {
+                    let days = time / 86400.0
+                    print("📊 [DEBUG] ✅ Found in history: \(statusName) = \(String(format: "%.1f", days)) days")
+                    return days
+                }
+            }
+        } else {
+            print("📊 [DEBUG] No history or no transitions available")
+        }
+
+        // Fallback: check current status
+        let currentStatusLower = issue.status.name.lowercased()
+        print("📊 [DEBUG] Checking if current status '\(currentStatusLower)' matches: \(statusNames)")
+
+        if statusNames.contains(where: { currentStatusLower.contains($0) }) {
+            // For tickets currently in this status, use the updated date
+            if let updated = issue.updated {
+                let days = Date().timeIntervalSince(updated) / 86400.0
+                print("📊 [DEBUG] ⚠️ Ticket is CURRENTLY in this status, using updated date: \(String(format: "%.1f", days)) days")
+                return days
+            }
+            // If no updated date, try created date
+            if let created = issue.created {
+                let days = Date().timeIntervalSince(created) / 86400.0
+                print("📊 [DEBUG] ⚠️ Using created date as fallback: \(String(format: "%.1f", days)) days")
+                return days
+            }
+        }
+
+        // For completed tickets (Done, Cancelled), try to estimate based on resolution date
+        let isCompleted = issue.isCompleted
+        if isCompleted {
+            // If the ticket is done and we're looking for In Progress time
+            // Use a rough estimate based on cycle time
+            if let created = issue.created, let resolved = issue.resolved {
+                // Assume the ticket spent most of its time in In Progress
+                let totalCycleDays = resolved.timeIntervalSince(created) / 86400.0
+
+                // If looking for "In Progress", estimate 60% of cycle time
+                if statusNames.contains(where: { $0.contains("progress") }) {
+                    let estimate = totalCycleDays * 0.6
+                    print("📊 [DEBUG] 📐 Estimated In Progress time (60% of cycle): \(String(format: "%.1f", estimate)) days")
+                    return estimate
+                }
+
+                // If looking for "Review", estimate 20% of cycle time
+                if statusNames.contains(where: { $0.contains("review") }) {
+                    let estimate = totalCycleDays * 0.2
+                    print("📊 [DEBUG] 📐 Estimated Review time (20% of cycle): \(String(format: "%.1f", estimate)) days")
+                    return estimate
+                }
+
+                // If looking for "Test", estimate 20% of cycle time
+                if statusNames.contains(where: { $0.contains("test") }) {
+                    let estimate = totalCycleDays * 0.2
+                    print("📊 [DEBUG] 📐 Estimated Test time (20% of cycle): \(String(format: "%.1f", estimate)) days")
+                    return estimate
+                }
+            }
+        }
+
+        print("📊 [DEBUG] ❌ No time found")
+        return nil
     }
 }
