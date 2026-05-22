@@ -25,16 +25,19 @@ struct JiraIssueDTO: Codable, Hashable {
         let created: String?
         let updated: String?
         let resolutiondate: String?
-        let sprint: JiraSprintDTO?
+        let sprints: [JiraSprintDTO]?
         let timetracking: TimeTrackingDTO?
         let customfield_10021: [FlaggedFieldDTO]?
 
         enum CodingKeys: String, CodingKey {
             case summary, description, status, assignee, priority, issuetype
             case created, updated, resolutiondate, timetracking
-            case sprint = "customfield_10020" // Jira custom field for sprint
-            case customfield_10021 // Jira custom field for flagged status
+            case sprints = "customfield_10020" // Jira Cloud returns an array
+            case customfield_10021
         }
+
+        // Active sprint is the last entry in the array (Jira Cloud ordering)
+        var sprint: JiraSprintDTO? { sprints?.last }
     }
 
     struct FlaggedFieldDTO: Codable, Hashable {

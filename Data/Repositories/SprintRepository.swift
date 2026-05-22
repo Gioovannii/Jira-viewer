@@ -19,20 +19,22 @@ final class SprintRepository: SprintRepositoryProtocol {
     // MARK: - SprintRepositoryProtocol
 
     func fetchSprints(projectKey: String) async throws -> [Sprint] {
-        // 1. Fetch the board ID
+        print("[SprintRepo] fetchSprints for projectKey=\(projectKey)")
         let boardId = try await getBoardId(projectKey: projectKey)
+        print("[SprintRepo] boardId=\(boardId)")
 
-        // 2. Fetch the board's sprints
         let endpoint = JiraEndpoint.sprints(boardId: boardId)
         let response: JiraSprintResponseDTO = try await apiClient.request(endpoint)
+        print("[SprintRepo] sprints count=\(response.values.count)")
 
-        // 3. Map DTOs to domain entities
         return SprintMapper.toDomain(response.values)
     }
 
     func getBoardId(projectKey: String) async throws -> Int {
+        print("[SprintRepo] getBoardId for projectKey=\(projectKey)")
         let endpoint = JiraEndpoint.boards(projectKey: projectKey)
         let response: JiraBoardResponseDTO = try await apiClient.request(endpoint)
+        print("[SprintRepo] boards count=\(response.values.count), ids=\(response.values.map(\.id))")
 
         guard let firstBoard = response.values.first else {
             throw NetworkError.http(

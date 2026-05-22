@@ -7,9 +7,11 @@
 //
 
 import Foundation
+import AuthenticationServices
 
 /// Simple manual DI container (without external dependency)
 /// Replaces Swinject to avoid compilation issues
+@MainActor
 final class DIContainer {
     static let shared = DIContainer()
 
@@ -38,10 +40,14 @@ final class DIContainer {
         )
     }()
 
+    private(set) lazy var oauthManager: OAuthManager = {
+        OAuthManager(secureStorage: _secureStorage)
+    }()
+
     private lazy var _jiraAPIClient: JiraAPIClient = {
         JiraAPIClient(
             networkClient: _networkClient,
-            configRepository: _configRepository
+            oauthManager: oauthManager
         )
     }()
 
@@ -93,29 +99,26 @@ final class DIContainer {
 
     // MARK: - ViewModels (new instances each time)
 
-    @MainActor
     var sprintListViewModel: SprintListViewModel {
         SprintListViewModel(
             fetchSprintsUseCase: _fetchSprintsUseCase,
-            configRepository: _configRepository
+            configRepository: _configRepository,
+            oauthManager: oauthManager
         )
     }
 
-    @MainActor
     var issueListViewModel: IssueListViewModel {
         IssueListViewModel(
             fetchIssuesUseCase: _fetchIssuesUseCase
         )
     }
 
-    @MainActor
     var settingsViewModel: SettingsViewModel {
         SettingsViewModel(
             configRepository: _configRepository
         )
     }
 
-    @MainActor
     func makeIssueDetailViewModel(issue: Issue) -> IssueDetailViewModel {
         IssueDetailViewModel(
             issue: issue,
@@ -123,7 +126,6 @@ final class DIContainer {
         )
     }
 
-    @MainActor
     func makeSprintReviewViewModel(sprint: Sprint, issues: [Issue]) -> SprintReviewViewModel {
         SprintReviewViewModel(
             sprint: sprint,

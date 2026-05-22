@@ -22,12 +22,13 @@ final class UserDefaultsStorage {
         static let jiraBaseURL = "jiraBaseURL"
         static let projectKey = "projectKey"
         static let flaggedCustomFieldId = "flaggedCustomFieldId"
+        static let jiraEmail = "jiraEmail"
     }
 
     // MARK: - Jira Base URL
 
     func getJiraBaseURL() -> String {
-        defaults.string(forKey: Keys.jiraBaseURL) ?? "https://jira.ets.mpi-internal.com"
+        defaults.string(forKey: Keys.jiraBaseURL) ?? "https://lbc-lbc.atlassian.net"
     }
 
     func setJiraBaseURL(_ url: String) {
@@ -42,6 +43,16 @@ final class UserDefaultsStorage {
 
     func setProjectKey(_ key: String) {
         defaults.set(key, forKey: Keys.projectKey)
+    }
+
+    // MARK: - Jira Email
+
+    func getJiraEmail() -> String {
+        defaults.string(forKey: Keys.jiraEmail) ?? ""
+    }
+
+    func setJiraEmail(_ email: String) {
+        defaults.set(email, forKey: Keys.jiraEmail)
     }
 
     // MARK: - Flagged Custom Field ID

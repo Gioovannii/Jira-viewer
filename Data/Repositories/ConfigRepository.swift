@@ -34,6 +34,16 @@ final class ConfigRepository: ConfigRepositoryProtocol {
         userDefaultsStorage.setJiraBaseURL(url)
     }
 
+    // MARK: - Jira Email
+
+    func getJiraEmail() -> String {
+        userDefaultsStorage.getJiraEmail()
+    }
+
+    func setJiraEmail(_ email: String) {
+        userDefaultsStorage.setJiraEmail(email)
+    }
+
     // MARK: - Jira Token (Keychain)
 
     func getJiraToken() -> String? {
@@ -71,9 +81,6 @@ final class ConfigRepository: ConfigRepositoryProtocol {
     // MARK: - Configuration Status
 
     var isConfigured: Bool {
-        let hasToken = (getJiraToken()?.isEmpty == false)
-        let hasURL = !getJiraBaseURL().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let hasProject = !getProjectKey().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return hasToken && hasURL && hasProject
+        !getProjectKey().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

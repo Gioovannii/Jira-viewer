@@ -11,88 +11,74 @@ import SwiftUI
 /// View for application settings
 struct SettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
+    @ObservedObject var oauthManager: OAuthManager
 
-    init(viewModel: SettingsViewModel? = nil) {
+    init(viewModel: SettingsViewModel? = nil, oauthManager: OAuthManager? = nil) {
         self.viewModel = viewModel ?? DIContainer.shared.settingsViewModel
+        self.oauthManager = oauthManager ?? DIContainer.shared.oauthManager
     }
 
     var body: some View {
         Form {
             Section("Jira Configuration") {
-                TextField("Jira URL", text: $viewModel.jiraBaseURL)
+                TextField("Project Key (e.g. LBCMONSPE)", text: $viewModel.projectKey)
                     .textFieldStyle(.roundedBorder)
-                    .disabled(true)
-
-                TextField("Project Key", text: $viewModel.projectKey)
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(true)
-
-                Text("Pre-configured for your Jira instance")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .onChange(of: viewModel.projectKey) { _ in viewModel.saveConfiguration() }
             }
 
             Section("Authentication") {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Personal Access Token")
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Jira Cloud — OAuth 2.0")
                         .font(.headline)
 
-                    Text("Use your Jira Personal Access Token to authenticate.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    SecureField("Personal Access Token", text: $viewModel.jiraToken)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(.body, design: .monospaced))
-                        .onChange(of: viewModel.jiraToken) { _ in
-                            viewModel.saveConfiguration()
+                    if oauthManager.isAuthenticated {
+                        HStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.title2)
+                            VStack(alignment: .leading) {
+                                Text("Connected to Atlassian")
+                                    .fontWeight(.semibold)
+                                Text("Your account is authorized.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Button("Disconnect") {
+                                oauthManager.logout()
+                            }
+                            .buttonStyle(.bordered)
                         }
-
-                    if viewModel.jiraToken.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("How to create a token:")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-
-                            Text("1. Go to Jira > Profile > Personal Access Tokens")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            Text("2. Click 'Create token'")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            Text("3. Copy and paste the token above")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.top, 4)
                     } else {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("Token configured")
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Sign in with your Atlassian account to access Jira.")
                                 .font(.caption)
-                                .foregroundColor(.green)
-                        }
-                    }
+                                .foregroundColor(.secondary)
 
-                    // Error or success messages
-                    if let error = viewModel.errorMessage {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.red)
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                        }
-                    }
+                            Button {
+                                Task { await oauthManager.login() }
+                            } label: {
+                                HStack {
+                                    if oauthManager.isAuthenticating {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                    }
+                                    Text(oauthManager.isAuthenticating ? "Signing in..." : "Sign in with Atlassian")
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(oauthManager.isAuthenticating)
 
-                    if let success = viewModel.successMessage {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text(success)
-                                .font(.caption)
-                                .foregroundColor(.green)
+                            if let error = oauthManager.errorMessage {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.red)
+                                    Text(error)
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                            }
                         }
                     }
                 }
@@ -114,45 +100,6 @@ struct SettingsView: View {
                         .onChange(of: viewModel.flaggedFieldId) { _ in
                             viewModel.saveFlaggedFieldId()
                         }
-
-                    Text("This varies by Jira instance. Check your Jira field configuration if blocked issues are not detected correctly.")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .italic()
-                }
-                .padding(.vertical, 8)
-            }
-
-            Section("Security") {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "lock.shield.fill")
-                            .foregroundColor(.green)
-                        Text("Secure Storage")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                    }
-
-                    Text("Your token is securely stored in the macOS Keychain. It is never saved in plain text.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-            }
-
-            Section("Sprint Summaries") {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "checkmark.shield.fill")
-                            .foregroundColor(.green)
-                        Text("Local and Private Generation")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                    }
-
-                    Text("Sprint summaries are generated locally on your Mac. No data is sent to an external service.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
                 .padding(.vertical, 8)
             }
@@ -160,13 +107,13 @@ struct SettingsView: View {
             Section("About") {
                 Text("Jira Viewer")
                     .font(.headline)
-                Text("Version 2.0 - Clean Architecture")
+                Text("Version 3.0 — OAuth 2.0")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
         }
         .formStyle(.grouped)
-        .frame(width: 600, height: 550)
+        .frame(width: 540, height: 480)
         .onAppear {
             viewModel.loadConfiguration()
         }

@@ -23,23 +23,31 @@ final class SprintListViewModel: ObservableObject {
 
     private let fetchSprintsUseCase: FetchSprintsUseCase
     private let configRepository: ConfigRepositoryProtocol
+    private let oauthManager: OAuthManager
 
     // MARK: - Initialization
 
     init(
         fetchSprintsUseCase: FetchSprintsUseCase,
-        configRepository: ConfigRepositoryProtocol
+        configRepository: ConfigRepositoryProtocol,
+        oauthManager: OAuthManager
     ) {
         self.fetchSprintsUseCase = fetchSprintsUseCase
         self.configRepository = configRepository
+        self.oauthManager = oauthManager
     }
 
     // MARK: - Public Methods
 
     /// Loads sprints from the API
     func loadSprints() async {
+        guard oauthManager.isAuthenticated else {
+            errorMessage = "Please sign in to your Atlassian account in Preferences (⌘,)."
+            return
+        }
+
         guard configRepository.isConfigured else {
-            errorMessage = "Configuration required. Please configure your Jira token."
+            errorMessage = "Please set your Project Key in Preferences (⌘,)."
             return
         }
 
@@ -67,6 +75,6 @@ final class SprintListViewModel: ObservableObject {
 
     /// Checks if the configuration is complete
     var isConfigured: Bool {
-        configRepository.isConfigured
+        oauthManager.isAuthenticated && configRepository.isConfigured
     }
 }

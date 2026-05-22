@@ -15,6 +15,7 @@ final class SettingsViewModel: ObservableObject {
     // MARK: - Published Properties
 
     @Published var jiraBaseURL: String = ""
+    @Published var jiraEmail: String = ""
     @Published var jiraToken: String = ""
     @Published var projectKey: String = ""
     @Published var flaggedFieldId: String = ""
@@ -42,6 +43,7 @@ final class SettingsViewModel: ObservableObject {
     /// Is the configuration valid?
     var isConfigurationValid: Bool {
         !jiraBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !jiraEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !jiraToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !projectKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -51,6 +53,7 @@ final class SettingsViewModel: ObservableObject {
     /// Loads the configuration from the repository
     func loadConfiguration() {
         jiraBaseURL = configRepository.getJiraBaseURL()
+        jiraEmail = configRepository.getJiraEmail()
         jiraToken = configRepository.getJiraToken() ?? ""
         projectKey = configRepository.getProjectKey()
         flaggedFieldId = configRepository.getFlaggedCustomFieldId()
@@ -61,17 +64,15 @@ final class SettingsViewModel: ObservableObject {
         errorMessage = nil
         successMessage = nil
 
-        // Validation
         guard isConfigurationValid else {
             errorMessage = "All fields are required"
             return
         }
 
-        // Save
         configRepository.setJiraBaseURL(jiraBaseURL)
+        configRepository.setJiraEmail(jiraEmail)
         configRepository.setProjectKey(projectKey)
 
-        // Save the token in the Keychain
         do {
             try configRepository.setJiraToken(jiraToken)
             successMessage = "Configuration saved successfully"

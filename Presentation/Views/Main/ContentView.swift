@@ -13,6 +13,7 @@ struct ContentView: View {
     // Injected ViewModels
     @StateObject private var sprintListViewModel: SprintListViewModel
     @StateObject private var issueListViewModel: IssueListViewModel
+    @ObservedObject private var oauthManager: OAuthManager
 
     // Local state
     @State private var selectedIssue: Issue?
@@ -26,11 +27,14 @@ struct ContentView: View {
         let container = DIContainer.shared
         _sprintListViewModel = StateObject(wrappedValue: sprintListViewModel ?? container.sprintListViewModel)
         _issueListViewModel = StateObject(wrappedValue: issueListViewModel ?? container.issueListViewModel)
+        oauthManager = container.oauthManager
     }
 
     var body: some View {
         Group {
-            if !sprintListViewModel.isConfigured && showingWelcome {
+            if !oauthManager.isAuthenticated {
+                signInView
+            } else if showingWelcome && !sprintListViewModel.isConfigured {
                 welcomeView
             } else {
                 mainView
@@ -48,7 +52,55 @@ struct ContentView: View {
         )
     }
 
-    // MARK: - Welcome View
+    // MARK: - Sign In View
+
+    private var signInView: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "person.badge.key.fill")
+                .font(.system(size: 64))
+                .foregroundColor(.accentColor)
+
+            Text("JiraViewer")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+
+            Text("Sign in with your Atlassian account to get started.")
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button {
+                Task { await oauthManager.login() }
+            } label: {
+                HStack {
+                    if oauthManager.isAuthenticating {
+                        ProgressView().scaleEffect(0.8)
+                    }
+                    Text(oauthManager.isAuthenticating ? "Signing in..." : "Sign in with Atlassian")
+                        .fontWeight(.semibold)
+                }
+                .frame(width: 240)
+                .padding(.vertical, 10)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(oauthManager.isAuthenticating)
+
+            if let error = oauthManager.errorMessage {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+                .padding(.horizontal)
+                .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Welcome View (project key not set)
 
     private var welcomeView: some View {
         VStack(spacing: 20) {
@@ -56,11 +108,11 @@ struct ContentView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.secondary)
 
-            Text("Configuration Required")
+            Text("One more step")
                 .font(.title)
                 .fontWeight(.semibold)
 
-            Text("Please configure your Jira Personal Access Token in preferences")
+            Text("Set your Project Key in Preferences to start.")
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
@@ -68,8 +120,8 @@ struct ContentView: View {
             if #available(macOS 14.0, *) {
                 SettingsLink {
                     HStack {
-                        Image(systemName: "key.fill")
-                        Text("Configure Token")
+                        Image(systemName: "gearshape")
+                        Text("Open Preferences")
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
@@ -77,12 +129,12 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
             } else {
-                Button(action: {
+                Button {
                     NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                }) {
+                } label: {
                     HStack {
-                        Image(systemName: "key.fill")
-                        Text("Configure Token")
+                        Image(systemName: "gearshape")
+                        Text("Open Preferences")
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)

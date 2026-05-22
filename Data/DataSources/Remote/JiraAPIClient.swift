@@ -8,58 +8,45 @@
 
 import Foundation
 
-/// Jira-specific API client (adds Bearer Token authentication)
+/// Jira API client using OAuth 2.0 Bearer token (Jira Cloud)
 final class JiraAPIClient {
     private let networkClient: NetworkClientProtocol
-    private let configRepository: ConfigRepositoryProtocol
+    private let oauthManager: OAuthManager
 
-    init(
-        networkClient: NetworkClientProtocol,
-        configRepository: ConfigRepositoryProtocol
-    ) {
+    init(networkClient: NetworkClientProtocol, oauthManager: OAuthManager) {
         self.networkClient = networkClient
-        self.configRepository = configRepository
+        self.oauthManager = oauthManager
     }
 
-    /// Performs a GET request on a Jira endpoint with authentication
     func request<T: Decodable>(_ endpoint: JiraEndpoint) async throws -> T {
-        let baseURL = configRepository.getJiraBaseURL()
-
-        guard let url = endpoint.url(baseURL: baseURL) else {
-            throw NetworkError.invalidURL
-        }
-
-        guard let token = configRepository.getJiraToken(), !token.isEmpty else {
-            throw NetworkError.unauthorized
-        }
-
-        let request = URLRequestBuilder(url: url)
-            .method("GET")
-            .bearerAuth(token: token)
-            .timeout(30)
-            .build()
-
+        let request = try await buildRequest(for: endpoint)
         return try await networkClient.request(request)
     }
 
-    /// Performs a GET request and returns raw data
     func requestData(_ endpoint: JiraEndpoint) async throws -> Data {
-        let baseURL = configRepository.getJiraBaseURL()
+        let request = try await buildRequest(for: endpoint)
+        return try await networkClient.requestData(request)
+    }
+
+    private func buildRequest(for endpoint: JiraEndpoint) async throws -> URLRequest {
+        let cloudID = try await MainActor.run { try oauthManager.getCloudID() }
+        let accessToken = try await oauthManager.getValidAccessToken()
+
+        // Jira Cloud REST API via api.atlassian.com
+        let baseURL = "https://api.atlassian.com/ex/jira/\(cloudID)"
 
         guard let url = endpoint.url(baseURL: baseURL) else {
+            print("[JiraAPI] ERROR: invalid URL, baseURL=\(baseURL)")
             throw NetworkError.invalidURL
         }
 
-        guard let token = configRepository.getJiraToken(), !token.isEmpty else {
-            throw NetworkError.unauthorized
-        }
+        print("[JiraAPI] \(url)")
 
-        let request = URLRequestBuilder(url: url)
+        return URLRequestBuilder(url: url)
             .method("GET")
-            .bearerAuth(token: token)
+            .bearerAuth(token: accessToken)
+            .header("Accept", value: "application/json")
             .timeout(30)
             .build()
-
-        return try await networkClient.requestData(request)
     }
 }

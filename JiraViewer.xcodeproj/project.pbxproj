@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AA000003OAUTH00000000003 /* OAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001OAUTH00000000001 /* OAuthManager.swift */; };
 		18B7BDCD0AAEDF3B1813CC3B /* SimpleSecureStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F333D9282C9395AD018DF2F1 /* SimpleSecureStorage.swift */; };
 		1C51F116C62C796DFCC1D56E /* JiraViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A704E6C574102D69FAE807 /* JiraViewerApp.swift */; };
 		4AE33CA9A34A896608504F4B /* JiraChangelogDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 056BBBDC76F554599D9B2113 /* JiraChangelogDTO.swift */; };
@@ -93,6 +94,7 @@
 		AEA07D662F43FBBE00F42076 /* FetchIssuesUseCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FetchIssuesUseCase.swift; sourceTree = "<group>"; };
 		AEA07D682F43FBBE00F42076 /* FetchSprintsUseCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FetchSprintsUseCase.swift; sourceTree = "<group>"; };
 		AEA07D692F43FBBE00F42076 /* GenerateSprintReviewUseCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerateSprintReviewUseCase.swift; sourceTree = "<group>"; };
+		AA000001OAUTH00000000001 /* OAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthManager.swift; sourceTree = "<group>"; };
 		AEA07D6D2F43FBBE00F42076 /* DIContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DIContainer.swift; sourceTree = "<group>"; };
 		AEA07D6F2F43FBBE00F42076 /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
 		AEA07D702F43FBBE00F42076 /* NetworkError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkError.swift; sourceTree = "<group>"; };
@@ -348,9 +350,18 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
+		AA000002OAUTH00000000002 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				AA000001OAUTH00000000001 /* OAuthManager.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
 		AEA07D792F43FBBE00F42076 /* Infrastructure */ = {
 			isa = PBXGroup;
 			children = (
+				AA000002OAUTH00000000002 /* Auth */,
 				AEA07D6E2F43FBBE00F42076 /* DI */,
 				AEA07D722F43FBBE00F42076 /* Network */,
 				AEA07D752F43FBBE00F42076 /* Storage */,
@@ -568,6 +579,7 @@
 				4AE33CA9A34A896608504F4B /* JiraChangelogDTO.swift in Sources */,
 				E733A7A696FFE8AAA507D09C /* IssueHistoryMapper.swift in Sources */,
 				18B7BDCD0AAEDF3B1813CC3B /* SimpleSecureStorage.swift in Sources */,
+				AA000003OAUTH00000000003 /* OAuthManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

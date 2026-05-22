@@ -49,15 +49,21 @@ final class NetworkClient: NetworkClientProtocol {
             throw NetworkError.invalidURL
         }
 
-        // Handle HTTP status codes
+        print("[Network] HTTP \(httpResponse.statusCode) for \(httpResponse.url?.absoluteString ?? "?")")
+
         switch httpResponse.statusCode {
         case 200...299:
             return data
         case 401:
+            print("[Network] 401 Unauthorized — vérifier email + token")
             throw NetworkError.unauthorized
         default:
             let message = decodeErrorMessage(from: data) ??
                 HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+            print("[Network] Error \(httpResponse.statusCode): \(message)")
+            if let raw = String(data: data, encoding: .utf8) {
+                print("[Network] Response body: \(raw.prefix(500))")
+            }
             throw NetworkError.http(statusCode: httpResponse.statusCode, message: message)
         }
     }

@@ -14,6 +14,10 @@ protocol ConfigRepositoryProtocol {
     func getJiraBaseURL() -> String
     func setJiraBaseURL(_ url: String)
 
+    /// Email address for Basic Auth (Jira Cloud)
+    func getJiraEmail() -> String
+    func setJiraEmail(_ email: String)
+
     /// Authentication token (stored in Keychain)
     func getJiraToken() -> String?
     func setJiraToken(_ token: String) throws
